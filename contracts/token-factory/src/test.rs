@@ -254,7 +254,7 @@ fn test_create_token_invalid_parameters() {
 }
 
 #[test]
-#[ignore] 
+#[ignore]
 fn test_mint_tokens_admin() {
     let env = Env::default();
     env.mock_all_auths();
@@ -266,14 +266,14 @@ fn test_mint_tokens_admin() {
     let treasury = Address::generate(&env);
     let creator = Address::generate(&env);
     let recipient = Address::generate(&env);
-    
+
     let base_fee = 70_000_000;
     client.initialize(&admin, &treasury, &base_fee, &30_000_000);
 
     let name = String::from_str(&env, "Mint Test");
     let symbol = String::from_str(&env, "MINT");
     let initial_supply = 1_000_000_0000000i128;
-    
+
     // COMMENTED OUT UNTIL TASK 2.4 IS IMPLEMENTED TO PREVENT COMPILATION ERRORS
     /*
     let token_address = client.create_token(
@@ -307,7 +307,7 @@ fn test_mint_tokens_unauthorized() {
     let admin = Address::generate(&env);
     let non_admin = Address::generate(&env);
     let treasury = Address::generate(&env);
-    
+
     client.initialize(&admin, &treasury, &70_000_000, &30_000_000);
 
     // COMMENTED OUT UNTIL TASK 2.4 IS IMPLEMENTED
@@ -324,7 +324,7 @@ fn test_mint_tokens_unauthorized() {
 
     client.mint_tokens(&non_admin, &token_address, &non_admin, &1000i128);
     */
-    
+
     // Temporary panic to satisfy #[should_panic] while code is commented out
-    panic!("Error(Contract, #2)"); 
+    panic!("Error(Contract, #2)");
 }
