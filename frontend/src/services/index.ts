@@ -1,0 +1,1 @@
+export { StellarService } from './stellar';
