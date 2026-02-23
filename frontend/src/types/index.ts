@@ -76,18 +76,25 @@ export const ErrorCode = {
     TIMEOUT_ERROR: 'TIMEOUT_ERROR',
     ACCOUNT_NOT_FOUND: 'ACCOUNT_NOT_FOUND',
     INVALID_SIGNATURE: 'INVALID_SIGNATURE',
+    BURN_FAILED: 'BURN_FAILED',
+    INVALID_AMOUNT: 'INVALID_AMOUNT',
+    UNAUTHORIZED: 'UNAUTHORIZED',
 } as const;
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
-<<<<<<< feat/160-burn-statistics-dashboard
-// Burn Statistics Types
-export interface BurnStats {
-    totalBurned: string;
-    burnCount: number;
-    initialSupply: string;
-    currentSupply: string;
-    percentBurned: number;
+// Burn Types
+export interface BurnTokenParams {
+    tokenAddress: string;
+    from: string;
+    amount: string;
+}
+
+export interface BurnResult {
+    txHash: string;
+    burnedAmount: string;
+    newBalance: string;
+    newSupply: string;
 }
 
 export interface BurnRecord {
@@ -98,6 +105,15 @@ export interface BurnRecord {
     isAdminBurn: boolean;
     txHash: string;
     blockNumber?: number;
+}
+
+// Burn Statistics Types
+export interface BurnStats {
+    totalBurned: string;
+    burnCount: number;
+    initialSupply: string;
+    currentSupply: string;
+    percentBurned: number;
 }
 
 export interface BurnHistoryFilter {
@@ -112,7 +128,8 @@ export interface BurnChartData {
     labels: string[];
     values: number[];
     cumulative: number[];
-=======
+}
+
 // Recurring Payment Types
 export type RecurringPaymentStatus = 'active' | 'due' | 'paused' | 'cancelled';
 
@@ -159,5 +176,4 @@ export interface RecurringPaymentFilters {
     status?: RecurringPaymentStatus;
     tokenAddress?: string;
     search?: string;
->>>>>>> main
 }
