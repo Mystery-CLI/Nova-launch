@@ -9,36 +9,20 @@ interface FeeBreakdownProps {
     className?: string;
 }
 
-export function FeeBreakdown({
-    baseFee,
-    metadataFee = 0,
-    currency = 'XLM',
-    xlmToUsdRate,
-    className = '',
-}: FeeBreakdownProps) {
-    const totalFee = baseFee + metadataFee;
+interface FeeRowProps {
+    label: string;
+    amount: number;
+    tooltip: string;
+    isTotal?: boolean;
+    formatAmount: (amount: number) => string;
+}
 
-    const formatAmount = (amount: number): string => {
-        if (currency === 'USD' && xlmToUsdRate) {
-            return `$${(amount * xlmToUsdRate).toFixed(2)}`;
-        }
-        return `${formatXLM(amount)} XLM`;
-    };
-
-    const FeeRow = ({
-        label,
-        amount,
-        tooltip,
-        isTotal = false,
-    }: {
-        label: string;
-        amount: number;
-        tooltip: string;
-        isTotal?: boolean;
-    }) => (
+function FeeRow({ label, amount, tooltip, isTotal = false, formatAmount }: FeeRowProps) {
+    return (
         <div
-            className={`flex justify-between items-center py-2 ${isTotal ? 'border-t-2 border-gray-300 pt-3 mt-2 font-semibold text-gray-900' : 'text-gray-700'
-                }`}
+            className={`flex justify-between items-center py-2 ${
+                isTotal ? 'border-t-2 border-gray-300 pt-3 mt-2 font-semibold text-gray-900' : 'text-gray-700'
+            }`}
         >
             <div className="flex items-center gap-2">
                 <span className={isTotal ? 'text-base' : 'text-sm'}>{label}</span>
@@ -62,6 +46,23 @@ export function FeeBreakdown({
             <span className={isTotal ? 'text-base' : 'text-sm'}>{formatAmount(amount)}</span>
         </div>
     );
+}
+
+export function FeeBreakdown({
+    baseFee,
+    metadataFee = 0,
+    currency = 'XLM',
+    xlmToUsdRate,
+    className = '',
+}: FeeBreakdownProps) {
+    const totalFee = baseFee + metadataFee;
+
+    const formatAmount = (amount: number): string => {
+        if (currency === 'USD' && xlmToUsdRate) {
+            return `$${(amount * xlmToUsdRate).toFixed(2)}`;
+        }
+        return `${formatXLM(amount)} XLM`;
+    };
 
     return (
         <div className={`bg-gray-50 rounded-lg p-4 border border-gray-200 ${className}`}>
@@ -72,6 +73,7 @@ export function FeeBreakdown({
                     label="Base Fee"
                     amount={baseFee}
                     tooltip="Network transaction fee required to deploy the token contract on Stellar"
+                    formatAmount={formatAmount}
                 />
 
                 {metadataFee > 0 && (
@@ -79,6 +81,7 @@ export function FeeBreakdown({
                         label="Metadata Fee"
                         amount={metadataFee}
                         tooltip="Additional fee for storing token metadata (image and description) on IPFS"
+                        formatAmount={formatAmount}
                     />
                 )}
 
@@ -87,6 +90,7 @@ export function FeeBreakdown({
                     amount={totalFee}
                     tooltip="Total cost to deploy your token including all fees"
                     isTotal
+                    formatAmount={formatAmount}
                 />
             </div>
 
