@@ -89,18 +89,18 @@ pub fn set_token_info_by_address(env: &Env, token_address: &Address, info: &Toke
 // Update token supply after burn
 pub fn update_token_supply(env: &Env, token_address: &Address, amount_change: i128) -> Option<()> {
     let mut info = get_token_info_by_address(env, token_address)?;
-    
+
     // Update total supply
     info.total_supply = info.total_supply.checked_add(amount_change)?;
-    
+
     // If burning (negative change), update total_burned
     if amount_change < 0 {
         info.total_burned = info.total_burned.checked_add(-amount_change)?;
         info.burn_count = info.burn_count.checked_add(1)?;
     }
-    
+
     // Save updated info
     set_token_info_by_address(env, token_address, &info);
-    
+
     Some(())
 }

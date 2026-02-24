@@ -90,14 +90,14 @@ impl TokenFactory {
     }
 
     /// Admin burn function with clawback capability
-    /// 
+    ///
     /// Allows the token creator (admin) to burn tokens from any address.
     /// This is a privileged operation that requires:
     /// - Admin authorization
     /// - Token must have clawback enabled
     /// - Valid burn amount
     /// - Sufficient balance in target address
-    /// 
+    ///
     /// # Security Considerations
     /// - Only token creator can perform admin burns
     /// - Separate event type distinguishes admin burns from self burns
@@ -114,8 +114,8 @@ impl TokenFactory {
         admin.require_auth();
 
         // Verify token exists and get info
-        let token_info = storage::get_token_info_by_address(&env, &token_address)
-            .ok_or(Error::TokenNotFound)?;
+        let token_info =
+            storage::get_token_info_by_address(&env, &token_address).ok_or(Error::TokenNotFound)?;
 
         // Verify admin is the token creator
         if token_info.creator != admin {
@@ -135,7 +135,7 @@ impl TokenFactory {
         // TODO: Uncomment once token contract integration is available
         // Get token contract client
         // let token = token::Client::new(&env, &token_address);
-        
+
         // Check balance
         // let balance = token.balance(&from);
         // if balance < amount {
@@ -164,7 +164,7 @@ impl TokenFactory {
     }
 
     /// Toggle clawback capability for a token (creator only)
-    /// 
+    ///
     /// Allows token creator to enable or disable clawback functionality.
     /// Once disabled, it can be re-enabled by the creator.
     pub fn set_clawback(
@@ -177,8 +177,8 @@ impl TokenFactory {
         admin.require_auth();
 
         // Get token info
-        let mut token_info = storage::get_token_info_by_address(&env, &token_address)
-            .ok_or(Error::TokenNotFound)?;
+        let mut token_info =
+            storage::get_token_info_by_address(&env, &token_address).ok_or(Error::TokenNotFound)?;
 
         // Verify admin is the token creator
         if token_info.creator != admin {
@@ -211,3 +211,9 @@ mod admin_burn_test;
 
 #[cfg(test)]
 mod burn_property_test;
+
+#[cfg(test)]
+mod fuzz_update_fees;
+
+#[cfg(test)]
+mod update_fees_regression_test;

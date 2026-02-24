@@ -755,11 +755,7 @@ fn test_burn_batch_invalid_amount() {
         &70_000_000,
     );
 
-    let burns = soroban_sdk::vec![
-        &env,
-        (user1.clone(), 100_000),
-        (user2.clone(), 0),
-    ];
+    let burns = soroban_sdk::vec![&env, (user1.clone(), 100_000), (user2.clone(), 0),];
 
     factory.burn_batch(&token_address, &burns);
 }
@@ -789,11 +785,7 @@ fn test_burn_batch_exceeds_supply() {
         &70_000_000,
     );
 
-    let burns = soroban_sdk::vec![
-        &env,
-        (user1.clone(), 600_000),
-        (user2.clone(), 500_000),
-    ];
+    let burns = soroban_sdk::vec![&env, (user1.clone(), 600_000), (user2.clone(), 500_000),];
 
     factory.burn_batch(&token_address, &burns);
 }
