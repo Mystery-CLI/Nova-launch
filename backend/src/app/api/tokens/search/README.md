@@ -2,7 +2,7 @@
 
 ## Overview
 
-The Token Search API provides comprehensive search and discovery capabilities for tokens with advanced filtering, sorting, full-text search, pagination, and caching.
+The Token Search API provides comprehensive search and filtering capabilities for discovering tokens with full-text search, multiple filters, sorting options, and pagination.
 
 ## Endpoint
 
@@ -10,34 +10,21 @@ The Token Search API provides comprehensive search and discovery capabilities fo
 GET /api/tokens/search
 ```
 
-## Features
-
-- ✅ Full-text search by name and symbol (case-insensitive)
-- ✅ Filter by creator address
-- ✅ Filter by creation date range
-- ✅ Filter by supply range
-- ✅ Filter by burn status (has burns / no burns)
-- ✅ Sort by: created, burned, supply, name
-- ✅ Pagination with configurable page size (max 50)
-- ✅ In-memory caching with 60-second TTL
-- ✅ Comprehensive input validation
-- ✅ Performance optimized with database indexes
-
 ## Query Parameters
 
 | Parameter | Type | Required | Default | Description |
 |-----------|------|----------|---------|-------------|
-| `q` | string | No | - | Search query for name or symbol (case-insensitive) |
-| `creator` | string | No | - | Filter by creator's Stellar address |
-| `startDate` | ISO 8601 | No | - | Filter tokens created after this date |
-| `endDate` | ISO 8601 | No | - | Filter tokens created before this date |
-| `minSupply` | numeric string | No | - | Minimum total supply |
-| `maxSupply` | numeric string | No | - | Maximum total supply |
-| `hasBurns` | "true" \| "false" | No | - | Filter by burn status |
-| `sortBy` | enum | No | "created" | Sort field: `created`, `burned`, `supply`, `name` |
-| `sortOrder` | enum | No | "desc" | Sort direction: `asc`, `desc` |
-| `page` | numeric string | No | "1" | Page number (1-indexed) |
-| `limit` | numeric string | No | "20" | Results per page (max 50) |
+| `q` | string | No | - | Full-text search by token name or symbol (case-insensitive) |
+| `creator` | string | No | - | Filter by creator address (case-insensitive) |
+| `startDate` | string (ISO 8601) | No | - | Filter tokens created after this date |
+| `endDate` | string (ISO 8601) | No | - | Filter tokens created before this date |
+| `minSupply` | string (numeric) | No | - | Minimum total supply |
+| `maxSupply` | string (numeric) | No | - | Maximum total supply |
+| `hasBurns` | `true` \| `false` | No | - | Filter by burn status |
+| `sortBy` | `created` \| `burned` \| `supply` \| `name` | No | `created` | Sort field |
+| `sortOrder` | `asc` \| `desc` | No | `desc` | Sort order |
+| `page` | string (numeric) | No | `1` | Page number (1-indexed) |
+| `limit` | string (numeric) | No | `20` | Results per page (max 50) |
 
 ## Response Structure
 
@@ -47,14 +34,14 @@ GET /api/tokens/search
   "data": [
     {
       "id": "uuid",
-      "address": "GABC123...",
+      "address": "GABC...",
       "creator": "GCREATOR...",
       "name": "Token Name",
       "symbol": "TKN",
       "decimals": 18,
       "totalSupply": "1000000",
       "initialSupply": "1000000",
-      "totalBurned": "100000",
+      "totalBurned": "50000",
       "burnCount": 5,
       "metadataUri": "ipfs://...",
       "createdAt": "2024-01-01T00:00:00.000Z",
@@ -70,7 +57,7 @@ GET /api/tokens/search
     "hasPrev": false
   },
   "filters": {
-    "q": "stellar",
+    "q": "test",
     "creator": null,
     "startDate": null,
     "endDate": null,
@@ -79,85 +66,72 @@ GET /api/tokens/search
     "hasBurns": null,
     "sortBy": "created",
     "sortOrder": "desc"
-  },
-  "cached": false
+  }
 }
 ```
 
-## Usage Examples
+## Examples
 
 ### Basic Search
 
 Search for tokens by name or symbol:
 
 ```bash
-curl "http://localhost:3001/api/tokens/search?q=stellar"
+curl "http://localhost:3000/api/tokens/search?q=stellar"
 ```
 
 ### Filter by Creator
 
-Get all tokens created by a specific address:
+Find all tokens created by a specific address:
 
 ```bash
-curl "http://localhost:3001/api/tokens/search?creator=GCREATOR123..."
+curl "http://localhost:3000/api/tokens/search?creator=GCREATOR123..."
 ```
 
 ### Date Range Filter
 
-Get tokens created within a specific date range:
+Find tokens created in a specific time period:
 
 ```bash
-curl "http://localhost:3001/api/tokens/search?startDate=2024-01-01T00:00:00.000Z&endDate=2024-12-31T23:59:59.999Z"
+curl "http://localhost:3000/api/tokens/search?startDate=2024-01-01T00:00:00.000Z&endDate=2024-12-31T23:59:59.999Z"
 ```
 
 ### Supply Range Filter
 
-Get tokens with supply between min and max:
+Find tokens within a supply range:
 
 ```bash
-curl "http://localhost:3001/api/tokens/search?minSupply=1000000&maxSupply=10000000"
+curl "http://localhost:3000/api/tokens/search?minSupply=1000&maxSupply=1000000"
 ```
 
-### Burn Status Filter
+### Filter by Burn Status
 
-Get only tokens that have burns:
-
-```bash
-curl "http://localhost:3001/api/tokens/search?hasBurns=true"
-```
-
-Get only tokens without burns:
+Find only tokens that have been burned:
 
 ```bash
-curl "http://localhost:3001/api/tokens/search?hasBurns=false"
+curl "http://localhost:3000/api/tokens/search?hasBurns=true"
 ```
 
 ### Sorting
 
-Sort by most burned (descending):
+Sort by most burned tokens:
 
 ```bash
-curl "http://localhost:3001/api/tokens/search?sortBy=burned&sortOrder=desc"
+curl "http://localhost:3000/api/tokens/search?sortBy=burned&sortOrder=desc"
 ```
 
-Sort by highest supply:
+Sort by name alphabetically:
 
 ```bash
-curl "http://localhost:3001/api/tokens/search?sortBy=supply&sortOrder=desc"
-```
-
-Sort by name (alphabetically):
-
-```bash
-curl "http://localhost:3001/api/tokens/search?sortBy=name&sortOrder=asc"
+curl "http://localhost:3000/api/tokens/search?sortBy=name&sortOrder=asc"
 ```
 
 ### Pagination
 
-Get page 2 with 10 results per page:
+Get the second page with 10 results per page:
 
 ```bash
-curl "http://localhost:3001/api/tokens/search?page=2&limit=10"
+curl "http://localhost:3000/api/tokens/search?page=2&limit=10"
 ```
 
 ### Combined Filters
@@ -165,57 +139,26 @@ curl "http://localhost:3001/api/tokens/search?page=2&limit=10"
 Complex query with multiple filters:
 
 ```bash
-curl "http://localhost:3001/api/tokens/search?q=token&creator=GCREATOR&hasBurns=true&minSupply=1000&sortBy=burned&sortOrder=desc&page=1&limit=20"
-```
-
-## TypeScript Usage
-
-```typescript
-interface SearchParams {
-  q?: string;
-  creator?: string;
-  startDate?: string;
-  endDate?: string;
-  minSupply?: string;
-  maxSupply?: string;
-  hasBurns?: "true" | "false";
-  sortBy?: "created" | "burned" | "supply" | "name";
-  sortOrder?: "asc" | "desc";
-  page?: string;
-  limit?: string;
-}
-
-async function searchTokens(params: SearchParams) {
-  const queryString = new URLSearchParams(params).toString();
-  const response = await fetch(`/api/tokens/search?${queryString}`);
-  return response.json();
-}
-
-// Example usage
-const results = await searchTokens({
-  q: "stellar",
-  sortBy: "burned",
-  sortOrder: "desc",
-  page: "1",
-  limit: "20",
-});
+curl "http://localhost:3000/api/tokens/search?q=token&creator=GCREATOR123&hasBurns=true&sortBy=burned&sortOrder=desc&page=1&limit=20"
 ```
 
 ## Error Responses
 
 ### 400 Bad Request
 
-Invalid parameters:
+Invalid query parameters:
 
 ```json
 {
   "success": false,
-  "error": "Invalid parameters",
+  "error": "Invalid query parameters",
   "details": [
     {
-      "code": "invalid_enum_value",
-      "path": ["sortBy"],
-      "message": "Invalid enum value. Expected 'created' | 'burned' | 'supply' | 'name'"
+      "code": "invalid_type",
+      "expected": "string",
+      "received": "undefined",
+      "path": ["startDate"],
+      "message": "Expected string, received undefined"
     }
   ]
 }
@@ -223,7 +166,7 @@ Invalid parameters:
 
 ### 500 Internal Server Error
 
-Server or database error:
+Server error:
 
 ```json
 {
@@ -233,51 +176,45 @@ Server or database error:
 }
 ```
 
-## Performance
+## Performance Optimization
 
 ### Caching
 
-- In-memory cache with 60-second TTL
-- Cache key based on all query parameters
-- Automatic cleanup (max 100 entries)
-- Cached responses include `cached: true` flag
-- ~60-80% cache hit rate for typical usage
+- Search results are cached for 5 minutes
+- Cache key is based on all query parameters
+- Cache automatically expires and cleans up old entries
+- Maximum cache size: 1000 entries (LRU eviction)
 
-### Database Optimization
+### Database Indexes
+
+The following indexes are used for optimal query performance:
+
+- `address` - Unique index for token lookups
+- `creator` - Index for creator filtering
+- `createdAt` - Index for date range queries
+- `totalSupply` - Implicit index for supply range queries
+- `burnCount` - Implicit index for burn status filtering
+
+### Query Optimization
 
 - Parallel execution of count and data queries
-- Database indexes on: `address`, `creator`, `createdAt`, `totalSupply`, `totalBurned`, `burnCount`, `name`, `symbol`
 - Efficient pagination with skip/take
-- Selective field projection
-
-### Response Times
-
-- Cached requests: 1-5ms
-- Simple queries: 10-50ms
-- Complex queries: 50-200ms
+- Case-insensitive search using Prisma's `mode: "insensitive"`
+- Selective field projection to reduce data transfer
 
 ## Rate Limiting
 
-- 100 requests per 15 minutes per IP address
-- Applied to all `/api/tokens/*` endpoints
+Consider implementing rate limiting for this endpoint in production:
 
-## Database Indexes
+```typescript
+// Example with express-rate-limit
+import rateLimit from 'express-rate-limit';
 
-The following indexes are recommended for optimal performance:
-
-```prisma
-model Token {
-  // ... fields ...
-  
-  @@index([address])
-  @@index([creator])
-  @@index([createdAt])
-  @@index([totalSupply])
-  @@index([totalBurned])
-  @@index([burnCount])
-  @@index([name])
-  @@index([symbol])
-}
+const searchLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30, // 30 requests per minute
+  message: 'Too many search requests, please try again later'
+});
 ```
 
 ## Testing
@@ -285,61 +222,15 @@ model Token {
 Run the test suite:
 
 ```bash
-cd backend
-npm test -- tokens.test.ts
+npm test src/app/api/tokens/search
 ```
-
-Test coverage includes:
-- Default pagination behavior
-- Full-text search (name and symbol)
-- All filter options
-- All sorting options
-- Pagination with multiple pages
-- Max limit enforcement
-- BigInt to string conversion
-- Parameter validation
-- Error handling
-- Cache functionality
-
-## Implementation Details
-
-### Files
-
-- `backend/src/routes/tokens.ts` - Main route implementation
-- `backend/src/routes/tokens.test.ts` - Comprehensive test suite (23 tests)
-- `backend/src/routes/tokens.api.md` - API documentation
-- `backend/src/index.ts` - Route registration
-
-### Architecture
-
-1. **Validation Layer**: Zod schema validates all input parameters
-2. **Cache Layer**: In-memory cache with TTL and LRU eviction
-3. **Query Builder**: Constructs Prisma queries based on filters
-4. **Database Layer**: Executes optimized Prisma queries
-5. **Serialization Layer**: Converts BigInt to string for JSON compatibility
-
-## Security
-
-- ✅ Rate limiting (100 req/15min per IP)
-- ✅ Input validation with Zod
-- ✅ SQL injection protection (Prisma ORM)
-- ✅ Max limit enforcement (50 results per page)
-- ✅ No sensitive data in error messages
 
 ## Future Enhancements
 
-Potential improvements:
-- Redis cache for distributed systems
-- PostgreSQL full-text search with tsvector
-- Aggregation queries (stats, analytics)
-- Export functionality (CSV, JSON)
-- Saved searches and alerts
-- Real-time updates via WebSocket
-- Advanced analytics (trending tokens)
-
-## Support
-
-For issues or questions, please refer to:
-- Implementation guide: `backend/src/routes/TOKENS_SEARCH_IMPLEMENTATION.md`
-- Quick reference: `backend/src/routes/TOKENS_SEARCH_QUICK_REF.md`
-- Checklist: `backend/TOKENS_SEARCH_CHECKLIST.md`
+- [ ] Add Redis caching for distributed systems
+- [ ] Implement full-text search with PostgreSQL's `tsvector`
+- [ ] Add aggregation endpoints (stats, trends)
+- [ ] Support for advanced filters (tags, categories)
+- [ ] Export search results (CSV, JSON)
+- [ ] Saved searches and alerts
+- [ ] GraphQL support

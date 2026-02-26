@@ -3,10 +3,12 @@ import cors from "cors";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import dotenv from "dotenv";
+import { corsOptions } from "./config/cors";
 import adminRoutes from "./routes/admin";
 import leaderboardRoutes from "./routes/leaderboard";
 import tokenRoutes from "./routes/tokens";
 import { Database } from "./config/database";
+import { successResponse, errorResponse } from "./utils/response";
 
 dotenv.config();
 
@@ -15,12 +17,7 @@ const PORT = process.env.PORT || 3001;
 
 // Security middleware
 app.use(helmet());
-app.use(
-  cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
-    credentials: true,
-  })
-);
+app.use(cors(corsOptions));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -47,11 +44,12 @@ app.use("/api/tokens", tokenRoutes);
 
 // Health check
 app.get("/health", (req, res) => {
-  res.json({
-    status: "ok",
-    timestamp: new Date(),
-    uptime: process.uptime(),
-  });
+  res.json(
+    successResponse({
+      status: "ok",
+      uptime: process.uptime(),
+    })
+  );
 });
 
 // Error handling middleware
@@ -63,16 +61,24 @@ app.use(
     next: express.NextFunction
   ) => {
     console.error("Error:", err);
-    res.status(err.status || 500).json({
-      error: err.message || "Internal server error",
-      ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
-    });
+    res.status(err.status || 500).json(
+      errorResponse({
+        code: "INTERNAL_SERVER_ERROR",
+        message: err.message || "Internal server error",
+        details: process.env.NODE_ENV === "development" ? { stack: err.stack } : undefined,
+      })
+    );
   }
 );
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({ error: "Route not found" });
+  res.status(404).json(
+    errorResponse({
+      code: "NOT_FOUND",
+      message: "Route not found",
+    })
+  );
 });
 
 app.listen(PORT, () => {
