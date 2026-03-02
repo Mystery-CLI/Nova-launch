@@ -1,4 +1,4 @@
-use soroban_sdk::{Address, Env, Symbol};
+use soroban_sdk::{symbol_short, Address, Env};
 use crate::storage;
 use crate::types::Error;
 
@@ -244,13 +244,44 @@ fn validate_address(addr: &Address) -> Result<(), Error> {
 //  Event emission
 // ─────────────────────────────────────────────
 
+/// Emit burn event (v1)
+/// 
+/// **Schema Version**: 1
+/// **Event Name**: burn_v1
+/// 
+/// **Topics** (indexed):
+/// - Event name: "burn_v1"
+/// - token_index: u32 - The token index
+/// 
+/// **Payload** (non-indexed):
+/// - caller: Address - The address that burned tokens
+/// - amount: i128 - The amount burned
+/// - new_supply: i128 - The new total supply after burn
+/// 
+/// **Schema Stability**: This schema is immutable. Any changes require a new version.
 fn emit_burn_event(env: &Env, token_index: u32, caller: &Address, amount: i128, new_supply: i128) {
     env.events().publish(
-        (Symbol::new(env, "burn"), token_index),
+        (symbol_short!("burn_v1"), token_index),
         (caller.clone(), amount, new_supply),
     );
 }
 
+/// Emit admin burn event (v1)
+/// 
+/// **Schema Version**: 1
+/// **Event Name**: adm_bn_v1
+/// 
+/// **Topics** (indexed):
+/// - Event name: "adm_bn_v1"
+/// - token_index: u32 - The token index
+/// 
+/// **Payload** (non-indexed):
+/// - admin: Address - The admin who initiated the burn
+/// - holder: Address - The address whose tokens were burned
+/// - amount: i128 - The amount burned
+/// - new_supply: i128 - The new total supply after burn
+/// 
+/// **Schema Stability**: This schema is immutable. Any changes require a new version.
 fn emit_admin_burn_event(
     env: &Env,
     token_index: u32,
@@ -260,11 +291,27 @@ fn emit_admin_burn_event(
     new_supply: i128,
 ) {
     env.events().publish(
-        (Symbol::new(env, "admin_burn"), token_index),
+        (symbol_short!("adm_bn_v1"), token_index),
         (admin.clone(), holder.clone(), amount, new_supply),
     );
 }
 
+/// Emit batch burn event (v1)
+/// 
+/// **Schema Version**: 1
+/// **Event Name**: bch_bn_v1
+/// 
+/// **Topics** (indexed):
+/// - Event name: "bch_bn_v1"
+/// - token_index: u32 - The token index
+/// 
+/// **Payload** (non-indexed):
+/// - admin: Address - The admin who initiated the batch burn
+/// - count: u32 - The number of burns in the batch
+/// - total_burned: i128 - The total amount burned across all burns
+/// - new_supply: i128 - The new total supply after batch burn
+/// 
+/// **Schema Stability**: This schema is immutable. Any changes require a new version.
 fn emit_batch_burn_event(
     env: &Env,
     token_index: u32,
@@ -274,7 +321,7 @@ fn emit_batch_burn_event(
     new_supply: i128,
 ) {
     env.events().publish(
-        (Symbol::new(env, "batch_burn"), token_index),
+        (symbol_short!("bch_bn_v1"), token_index),
         (admin.clone(), count, total_burned, new_supply),
     );
 }

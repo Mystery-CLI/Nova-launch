@@ -1,6 +1,7 @@
 #![no_std]
 
 mod events;
+mod event_versions;
 mod storage;
 mod burn;
 mod types;
