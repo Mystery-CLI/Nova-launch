@@ -113,7 +113,7 @@ pub fn emit_token_registered(env: &Env, token_address: &Address, creator: &Addre
 /// The ledger automatically records transaction timestamps.
 pub fn emit_admin_transfer(env: &Env, old_admin: &Address, new_admin: &Address) {
     env.events().publish(
-        (symbol_short!("adm_xf_v1"),),
+        (symbol_short!("adm_xfer"),),
         (old_admin, new_admin),
     );
 }
@@ -171,7 +171,7 @@ pub fn emit_unpause(env: &Env, admin: &Address) {
 /// **Schema Stability**: This schema is immutable. Any changes require a new version.
 pub fn emit_fees_updated(env: &Env, base_fee: i128, metadata_fee: i128) {
     env.events().publish(
-        (symbol_short!("fee_up_v1"),),
+        (symbol_short!("fees_upd"),),
         (base_fee, metadata_fee),
     );
 }
@@ -201,7 +201,7 @@ pub fn emit_admin_burn(
     amount: i128,
 ) {
     env.events().publish(
-        (symbol_short!("adm_br_v1"), token_address.clone()),
+        (symbol_short!("adm_burn"), token_address.clone()),
         (admin, from, amount),
     );
 }
@@ -249,202 +249,35 @@ pub fn emit_clawback_toggled(
 /// Used when multiple tokens are burned in a batch operation
 pub fn emit_token_burned(env: &Env, token_address: &Address, amount: i128) {
     env.events().publish(
-        (symbol_short!("tok_br_v1"), token_address.clone()),
+        (symbol_short!("tkn_burn"), token_address.clone()),
         (amount,),
     );
 }
 
-
-// ── Timelock events ─────────────────────────────────────────
-
-/// Emit timelock configured event
-///
-/// Emitted when timelock is initialized or updated
-pub fn emit_timelock_configured(env: &Env, delay_seconds: u64) {
-    env.events().publish(
-        (symbol_short!("tl_cfg"),),
-        (delay_seconds,),
-    );
-}
-
-/// Emit change scheduled event
-///
-/// Emitted when a sensitive change is scheduled with timelock
-pub fn emit_change_scheduled(env: &Env, change_id: u64, change_type: crate::types::ChangeType, execute_at: u64) {
-    env.events().publish(
-        (symbol_short!("ch_sched"), change_id),
-        (change_type, execute_at),
-    );
-}
-
-/// Emit change executed event
-///
-/// Emitted when a pending change is successfully executed
-pub fn emit_change_executed(env: &Env, change_id: u64, change_type: crate::types::ChangeType) {
-    env.events().publish(
-        (symbol_short!("ch_exec"), change_id),
-        (change_type,),
-    );
-}
-
-/// Emit change cancelled event
-///
-/// Emitted when a pending change is cancelled before execution
-pub fn emit_change_cancelled(env: &Env, change_id: u64, change_type: crate::types::ChangeType) {
-    env.events().publish(
-        (symbol_short!("ch_cncl"), change_id),
-        (change_type,),
-    );
-}
-
-/// Emit treasury updated event
-///
-/// Emitted when treasury address is changed
-pub fn emit_treasury_updated(env: &Env, new_treasury: &Address) {
-    env.events().publish(
-        (symbol_short!("trs_upd"),),
-        (new_treasury,),
-    );
-}
-
-
-/// Emit mint event
-///
-/// Emitted when tokens are minted
-pub fn emit_mint(env: &Env, token_index: u32, to: &Address, amount: i128) {
-    env.events().publish(
-        (symbol_short!("mint"), token_index),
-        (to, amount),
-    );
-}
-
-
-// ── Treasury events ─────────────────────────────────────────
-
-/// Emit treasury withdrawal event
-///
-/// Emitted when fees are withdrawn from treasury
-pub fn emit_treasury_withdrawal(env: &Env, recipient: &Address, amount: i128) {
-    env.events().publish(
-        (symbol_short!("trs_wdrw"),),
-        (recipient, amount),
-    );
-}
-
-/// Emit recipient added event
-///
-/// Emitted when an address is added to the withdrawal allowlist
-pub fn emit_recipient_added(env: &Env, recipient: &Address) {
-    env.events().publish(
-        (symbol_short!("rec_add"),),
-        (recipient,),
-    );
-}
-
-/// Emit recipient removed event
-///
-/// Emitted when an address is removed from the withdrawal allowlist
-pub fn emit_recipient_removed(env: &Env, recipient: &Address) {
-    env.events().publish(
-        (symbol_short!("rec_rem"),),
-        (recipient,),
-    );
-}
-
-/// Emit treasury policy updated event
-///
-/// Emitted when treasury withdrawal policy is changed
-pub fn emit_treasury_policy_updated(env: &Env, daily_cap: i128, allowlist_enabled: bool) {
-    env.events().publish(
-        (symbol_short!("trs_pol"),),
-        (daily_cap, allowlist_enabled),
-    );
-}
-
-/// Emit stream metadata updated event (v1)
+/// Emit token created event
 /// 
-/// **Schema Version**: 1
-/// **Event Name**: strm_md_v1
-/// 
-/// **Topics** (indexed):
-/// - Event name: "strm_md_v1"
-/// - stream_id: u32 - The stream ID being updated
-/// 
-/// **Payload** (non-indexed):
-/// - updater: Address - The address that updated the metadata (creator/admin)
-/// - has_metadata: bool - Whether metadata is now present (true) or cleared (false)
-/// 
-/// **Schema Stability**: This schema is immutable. Any changes require a new version.
-/// 
-/// Emitted when stream metadata is successfully updated
-pub fn emit_stream_metadata_updated(
+/// Published when a new token is successfully created
+pub fn emit_token_created(
     env: &Env,
-    stream_id: u32,
-    updater: &Address,
-    has_metadata: bool,
-) {
-    env.events().publish(
-        (symbol_short!("stm_md_v1"), stream_id),
-        (updater, has_metadata),
-    );
-}
-
-/// Emit stream created event (v1)
-/// 
-/// **Schema Version**: 1
-/// **Event Name**: stm_cr_v1
-/// 
-/// **Topics** (indexed):
-/// - Event name: "stm_cr_v1"
-/// - stream_id: u32 - The newly created stream ID
-/// 
-/// **Payload** (non-indexed):
-/// - creator: Address - The stream creator
-/// - recipient: Address - The stream recipient
-/// - amount: i128 - The stream amount
-/// - has_metadata: bool - Whether metadata is present
-/// 
-/// **Schema Stability**: This schema is immutable. Any changes require a new version.
-/// 
-/// Emitted when a new stream is created
-pub fn emit_stream_created(
-    env: &Env,
-    stream_id: u32,
+    token_address: &Address,
     creator: &Address,
-    recipient: &Address,
-    amount: i128,
-    has_metadata: bool,
 ) {
     env.events().publish(
-        (symbol_short!("stm_cr_v1"), stream_id),
-        (creator, recipient, amount, has_metadata),
+        (symbol_short!("tkn_crtd"), token_address.clone()),
+        creator,
     );
 }
 
-/// Emit stream claimed event (v1)
+/// Emit batch tokens created event
 /// 
-/// **Schema Version**: 1
-/// **Event Name**: stm_cl_v1
-/// 
-/// **Topics** (indexed):
-/// - Event name: "stm_cl_v1"
-/// - stream_id: u32 - The stream identifier
-/// 
-/// **Payload** (non-indexed):
-/// - recipient: Address - The beneficiary claiming tokens
-/// - amount: i128 - Amount of tokens claimed
-/// 
-/// **Schema Stability**: This schema is immutable. Any changes require a new version.
-/// 
-/// Emitted when tokens are claimed from a stream
-pub fn emit_stream_claimed(
+/// Published when multiple tokens are created in a batch operation
+pub fn emit_batch_tokens_created(
     env: &Env,
-    stream_id: u32,
-    recipient: &Address,
-    amount: i128,
+    creator: &Address,
+    count: u32,
 ) {
     env.events().publish(
-        (symbol_short!("stm_cl_v1"), stream_id),
-        (recipient, amount),
+        (symbol_short!("batch_tkn"),),
+        (creator, count),
     );
 }

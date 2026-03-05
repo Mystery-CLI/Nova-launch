@@ -102,6 +102,17 @@ pub struct TokenStats {
     pub freeze_enabled: bool,
 }
 
+/// Token creation parameters for batch operations
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TokenCreationParams {
+    pub name: String,
+    pub symbol: String,
+    pub decimals: u32,
+    pub initial_supply: i128,
+    pub metadata_uri: Option<String>,
+}
+
 /// Batch fee update structure for Phase 2 optimization
 ///
 /// Allows updating both fees in a single operation, providing
@@ -158,12 +169,10 @@ pub enum DataKey {
     BaseFee,
     MetadataFee,
     TokenCount,
-    Token(u32),
-    Balance(u32, Address),
-    BurnCount(u32),
-    TokenPaused(u32),
-    TotalBurned(u32),
-    TokenByAddress(Address),
+    Token(u32),            // Token index -> TokenInfo
+    TokenByAddress(Address), // Token address -> TokenInfo
+    Balance(u32, Address), // (token_index, holder) -> i128
+    BurnCount(u32),        // token_index -> u32
     Paused,
     TimelockConfig,
     PendingChange(u64),
@@ -251,37 +260,8 @@ pub enum Error {
     InvalidBurnAmount = 12,
     BurnAmountExceedsBalance = 13,
     ContractPaused = 14,
-    TimelockNotExpired = 15,
-    ChangeAlreadyExecuted = 16,
-    MaxSupplyExceeded = 17,
-    InvalidMaxSupply = 18,
-    WithdrawalCapExceeded = 19,
-    RecipientNotAllowed = 20,
-    MissingAdmin = 21,
-    MissingTreasury = 22,
-    InvalidBaseFee = 23,
-    InvalidMetadataFee = 24,
-    InconsistentTokenCount = 25,
-    StreamNotFound = 26,
-    InvalidSchedule = 27,
-    CliffNotReached = 28,
-    NothingToClaim = 29,
-    StreamPaused = 30,
-    StreamCancelled = 31,
-}
-
-/// Timelock configuration
-///
-/// Defines the delay period for sensitive operations.
-///
-/// # Fields
-/// * `delay_seconds` - Time delay in seconds before changes can be executed
-/// * `enabled` - Whether timelock is currently active
-#[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub struct TimelockConfig {
-    pub delay_seconds: u64,
-    pub enabled: bool,
+    InvalidTokenParams = 15,
+    BatchCreationFailed = 16,
 }
 
 /// Type of pending change
