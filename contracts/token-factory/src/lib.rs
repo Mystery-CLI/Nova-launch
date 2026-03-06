@@ -13,18 +13,19 @@ mod timelock;
 mod pagination;
 mod mint;
 mod treasury;
-mod vesting;
-mod differential_engine;
+mod stream_types;
+
 #[cfg(test)]
-mod comprehensive_differential_tests;
+mod stream_metadata_test;
+
 #[cfg(test)]
-mod differential_proptest;
+mod stream_metadata_update_test;
 
 #[cfg(test)]
 mod stream_claim_parity_test_standalone;
 
 use soroban_sdk::{contract, contractimpl, symbol_short, Address, Env, String, Vec};
-use types::{ContractMetadata, Error, FactoryState, TokenInfo, TokenStats, TokenCreationParams};
+use types::{Error, FactoryState, TokenInfo, TokenStats};
 
 // Contract metadata constants
 const CONTRACT_NAME: &str = "Nova Launch Token Factory";
@@ -32,10 +33,6 @@ const CONTRACT_DESCRIPTION: &str = "No-code token deployment on Stellar";
 const CONTRACT_AUTHOR: &str = "Nova Launch Team";
 const CONTRACT_LICENSE: &str = "MIT";
 const CONTRACT_VERSION: &str = "1.0.0";
-mod token_creation;
-
-use soroban_sdk::{contract, contractimpl, Address, Env, String, Vec};
-use types::{Error, FactoryState, TokenInfo, TokenCreationParams};
 
 #[contract]
 pub struct TokenFactory;
@@ -537,13 +534,6 @@ impl TokenFactory {
     }
 
     /// Get token info by index
-   pub fn get_token_info(env: Env, index: u32) -> Result<TokenInfo, Error> {
-    let mut info = storage::get_token_info(&env, index).ok_or(Error::TokenNotFound)?;
-    info.is_paused = storage::is_token_paused(&env, index);   // ADD
-    Ok(info)
-}
-
-    /// Get token info by index
     pub fn get_token_info(env: Env, index: u32) -> Result<TokenInfo, Error> {
         let mut info = storage::get_token_info(&env, index).ok_or(Error::TokenNotFound)?;
         info.is_paused = storage::is_token_paused(&env, index);
@@ -677,241 +667,6 @@ impl TokenFactory {
     /// * `env` - The contract environment
     /// * `index` - Token index (0 to token_count - 1)
     ///
-    /// # Returns
-    /// Returns `Ok(TokenInfo)` with token details
-    ///
-    /// # Errors
-    /// * `Error::TokenNotFound` - Index is out of range
-    ///
-    /// # Examples
-    /// ```
-    /// let token = factory.get_token_info(&env, 0)?;
-    /// assert_eq!(token.symbol, "MTK");
-    /// assert_eq!(token.decimals, 7);
-    /// ```
-
-    /// Create a new vesting stream
-    ///
-    /// Creates a token vesting stream with a defined schedule.
-    ///
-    /// # Arguments
-    /// * `env` - The contract environment
-    /// * `creator` - Address creating the stream (must authorize)
-    /// * `recipient` - Address that will receive vested tokens
-    /// * `token_address` - Token contract address
-    /// * `amount` - Total amount to vest (must be > 0)
-    /// * `start_time` - Stream start timestamp
-    /// * `cliff_time` - Cliff timestamp (no claims before this)
-    /// * `end_time` - Stream end timestamp
-    /// * `metadata` - Optional metadata string
-    ///
-    /// # Returns
-    /// Returns the created stream ID
-    ///
-    /// # Errors
-    /// * `Error::InvalidAmount` - Amount is zero or negative
-    /// * `Error::InvalidSchedule` - Schedule ordering invalid (start > cliff or cliff > end)
-    /// * `Error::InvalidParameters` - Metadata exceeds 512 characters
-    pub fn create_stream(
-        env: Env,
-        creator: Address,
-        recipient: Address,
-        token_address: Address,
-        amount: i128,
-        start_time: u64,
-        cliff_time: u64,
-        end_time: u64,
-        metadata: Option<String>,
-    ) -> Result<u32, Error> {
-        creator.require_auth();
-
-        // Validate amount
-        stream_types::validate_amount(amount)?;
-
-        // Validate schedule
-        let schedule = stream_types::StreamSchedule {
-            start_time,
-            cliff_time,
-            end_time,
-        };
-        stream_types::validate_schedule(&schedule)?;
-
-        // Validate metadata
-        stream_types::validate_metadata(&metadata)?;
-
-        // Generate stream ID
-        let stream_id = storage::increment_stream_count(&env);
-
-    if info.metadata_uri.is_some() {
-        return Err(Error::MetadataAlreadySet);
-    }
-    
-    info.metadata_uri = Some(new_metadata_uri);
-    storage::set_token_info(&env, index, &info);
-    Ok(())
-   }
-
-    /// Get token information by contract address
-        // Create stream
-        let stream = stream_types::StreamInfo {
-            id: stream_id,
-            creator: creator.clone(),
-            recipient: recipient.clone(),
-            token_address: token_address.clone(),
-            amount,
-            schedule,
-            claimed: 0,
-            cancelled: false,
-            metadata: metadata.clone(),
-            created_at: env.ledger().timestamp(),
-        };
-
-        // Persist stream
-        storage::set_stream(&env, stream_id, &stream);
-        storage::add_creator_stream(&env, &creator, stream_id);
-
-        // Emit event
-        events::emit_stream_created(
-            &env,
-            stream_id,
-            &creator,
-            &recipient,
-            amount,
-            metadata.is_some(),
-        );
-
-        Ok(stream_id)
-    }
-
-    /// Get stream information by ID
-    ///
-    /// Retrieves complete vesting stream details including schedule,
-    /// amounts, and metadata. This is a read-only operation.
-    ///
-    /// # Arguments
-    /// * `env` - The contract environment
-    /// * `stream_id` - Unique stream identifier
-    ///
-    /// # Returns
-    /// Returns `StreamInfo` with all stream details
-    ///
-    /// # Errors
-    /// * `Error::StreamNotFound` - Stream ID does not exist
-    pub fn get_stream(env: Env, stream_id: u32) -> Result<stream_types::StreamInfo, Error> {
-        storage::get_stream(&env, stream_id).ok_or(Error::StreamNotFound)
-    }
-
-    /// Get total number of streams created
-    ///
-    /// # Returns
-    /// Total count of all streams
-    pub fn get_stream_count(env: Env) -> u32 {
-        storage::get_stream_count(&env)
-    }
-
-    /// Admin burn function with clawback capability (by address)
-    ///
-    /// Retrieves streams in pages with stable ordering by stream ID.
-    /// Maximum limit is 100 to prevent expensive reads.
-    ///
-    /// # Security Considerations
-    /// - Only token creator can perform admin burns
-    /// - Separate event type distinguishes admin burns from self burns
-    /// - Clawback must be explicitly enabled per token
-    /// - All burns are permanently recorded in total_burned counter
-    pub fn admin_burn_by_address(
-        env: Env,
-        cursor: u32,
-        limit: u32,
-    ) -> Result<Vec<stream_types::StreamInfo>, Error> {
-        const MAX_LIMIT: u32 = 100;
-
-        if limit == 0 || limit > MAX_LIMIT || cursor == 0 {
-            return Err(Error::InvalidParameters);
-        }
-
-        let total_count = storage::get_stream_count(&env);
-        let mut streams = Vec::new(&env);
-
-        let end = cursor.saturating_add(limit).min(total_count + 1);
-
-        for stream_id in cursor..end {
-            if let Some(stream) = storage::get_stream(&env, stream_id) {
-                streams.push_back(stream);
-            }
-        }
-
-        Ok(streams)
-    }
-
-    /// Claim vested tokens from a stream
-    ///
-    /// Allows the beneficiary to claim tokens that have vested up to the
-    /// current ledger time. Only the claimable delta (vested - claimed) is released.
-    ///
-    /// # Arguments
-    /// * `env` - The contract environment
-    /// * `stream_id` - Stream identifier
-    /// * `recipient` - Beneficiary address (must authorize and match stream recipient)
-    ///
-    /// # Returns
-    /// Amount of tokens claimed
-    ///
-    /// # Errors
-    /// * `Error::StreamNotFound` - Stream ID does not exist
-    /// * `Error::Unauthorized` - Caller is not the stream recipient
-    /// * `Error::StreamCancelled` - Stream has been cancelled
-    /// * `Error::CliffNotReached` - Current time is before cliff time
-    /// * `Error::NothingToClaim` - No new tokens available to claim
-    pub fn claim_stream(
-        env: Env,
-        stream_id: u32,
-        recipient: Address,
-    ) -> Result<i128, Error> {
-        recipient.require_auth();
-
-        // Get stream
-        let mut stream = storage::get_stream(&env, stream_id).ok_or(Error::StreamNotFound)?;
-
-        // Verify recipient
-        if stream.recipient != recipient {
-            return Err(Error::Unauthorized);
-        }
-
-        // Check if cancelled
-        if stream.cancelled {
-            return Err(Error::StreamCancelled);
-        }
-
-        let current_time = env.ledger().timestamp();
-
-        // Check cliff
-        if current_time < stream.schedule.cliff_time {
-            return Err(Error::CliffNotReached);
-        }
-
-        // Calculate vested amount
-        let vested = stream_types::calculate_vested_amount(&stream, current_time);
-
-        // Calculate claimable delta
-        let claimable = vested.checked_sub(stream.claimed).unwrap_or(0);
-
-        if claimable <= 0 {
-            return Err(Error::NothingToClaim);
-        }
-
-        // Update claimed amount atomically
-        stream.claimed = stream.claimed.checked_add(claimable).unwrap_or(stream.amount);
-
-        // Persist updated stream
-        storage::set_stream(&env, stream_id, &stream);
-
-        // Emit event
-        events::emit_stream_claimed(&env, stream_id, &recipient, claimable);
-
-        Ok(claimable)
-    }
-
     /// Toggle clawback capability for a token (creator only)
     ///
     /// Allows the token creator to enable or disable clawback functionality.
@@ -1057,74 +812,89 @@ impl TokenFactory {
         burn::get_burn_count(&env, token_index)
     }
 
-    /// Create a single token with fee payment
-    /// 
+    /// Admin-initiated burn from any holder's balance
+    ///
+    /// Allows the admin to burn tokens from any holder's address.
+    /// This is a privileged operation that requires admin authentication.
+    ///
     /// # Arguments
-    /// * `creator` - Address creating the token (must authorize)
-    /// * `name` - Token name (1-32 characters)
-    /// * `symbol` - Token symbol (1-12 characters)
-    /// * `decimals` - Token decimals (0-18)
-    /// * `initial_supply` - Initial token supply (must be positive)
-    /// * `metadata_uri` - Optional metadata URI
-    /// * `fee_payment` - Fee payment amount
-    /// 
+    /// * `env` - The contract environment
+    /// * `admin` - Admin address (must authorize and match stored admin)
+    /// * `token_index` - Index of the token to burn
+    /// * `holder` - Address holding the tokens to burn
+    /// * `amount` - Amount to burn (must be > 0 and <= holder's balance)
+    ///
     /// # Returns
-    /// Address of the created token
-    /// 
+    /// Returns `Ok(())` on success
+    ///
     /// # Errors
-    /// * `ContractPaused` - Contract is paused
-    /// * `InsufficientFee` - Fee payment is insufficient
-    /// * `InvalidTokenParams` - Token parameters are invalid
-    pub fn create_token(
+    /// * `Error::Unauthorized` - Caller is not the admin
+    /// * `Error::TokenNotFound` - Token index is invalid
+    /// * `Error::InvalidParameters` - Amount is zero or negative
+    /// * `Error::InsufficientBalance` - Holder balance is less than amount
+    /// * `Error::ArithmeticError` - Numeric overflow/underflow
+    ///
+    /// # Examples
+    /// ```
+    /// // Admin burns 1000 tokens from a holder
+    /// factory.admin_burn(&env, admin, 0, holder, 1_000_0000000)?;
+    /// ```
+    pub fn admin_burn(
         env: Env,
-        creator: Address,
-        name: String,
-        symbol: String,
-        decimals: u32,
-        initial_supply: i128,
-        metadata_uri: Option<String>,
-        fee_payment: i128,
-    ) -> Result<Address, Error> {
-        token_creation::create_token(
-            &env,
-            creator,
-            name,
-            symbol,
-            decimals,
-            initial_supply,
-            metadata_uri,
-            fee_payment,
-        )
+        admin: Address,
+        token_index: u32,
+        holder: Address,
+        amount: i128,
+    ) -> Result<(), Error> {
+        burn::admin_burn(&env, admin, token_index, holder, amount)
     }
-
-    /// Batch create multiple tokens atomically
-    /// 
-    /// All tokens are created in a single transaction with atomic semantics.
-    /// If any token fails validation, the entire batch is rolled back.
-    /// 
+    /// Set metadata URI for a token (one-time only)
+    ///
+    /// Allows the token creator to set an IPFS metadata URI for their token.
+    /// This operation can only be performed once per token - metadata is
+    /// immutable after being set to ensure data integrity and trust.
+    ///
+    /// # Mutability Rules
+    /// - Metadata can only be set if it's currently `None`
+    /// - Once set, metadata cannot be changed or removed
+    /// - This ensures permanent, tamper-proof token metadata
+    ///
     /// # Arguments
-    /// * `creator` - Address creating the tokens (must authorize)
-    /// * `tokens` - Vector of token creation parameters
-    /// * `total_fee_payment` - Total fee payment for all tokens
-    /// 
+    /// * `env` - The contract environment
+    /// * `token_index` - Index of the token to update
+    /// * `admin` - Token creator address (must authorize and match creator)
+    /// * `metadata_uri` - IPFS URI for token metadata (e.g., "ipfs://Qm...")
+    ///
     /// # Returns
-    /// Vector of created token addresses
-    /// 
+    /// Returns `Ok(())` on success
+    ///
     /// # Errors
-    /// * `ContractPaused` - Contract is paused
-    /// * `InsufficientFee` - Total fee payment is insufficient
-    /// * `InvalidTokenParams` - Any token has invalid parameters
-    /// * `BatchCreationFailed` - Batch creation failed (atomic rollback)
-    pub fn batch_create_tokens(
+    /// * `Error::ContractPaused` - Contract is currently paused
+    /// * `Error::TokenNotFound` - Token index is invalid
+    /// * `Error::Unauthorized` - Caller is not the token creator
+    /// * `Error::MetadataAlreadySet` - Metadata has already been set (immutable)
+    ///
+    /// # Examples
+    /// ```
+    /// // Set metadata for the first time
+    /// let metadata_uri = String::from_str(&env, "ipfs://QmTest123");
+    /// factory.set_metadata(&env, 0, creator, metadata_uri)?;
+    ///
+    /// // Attempting to change metadata will fail
+    /// let new_uri = String::from_str(&env, "ipfs://QmTest456");
+    /// let result = factory.set_metadata(&env, 0, creator, new_uri);
+    /// assert_eq!(result, Err(Error::MetadataAlreadySet));
+    /// ```
+    pub fn set_metadata(
         env: Env,
-        creator: Address,
-        tokens: Vec<TokenCreationParams>,
-        total_fee_payment: i128,
-    ) -> Result<Vec<Address>, Error> {
-        token_creation::batch_create_tokens(&env, creator, tokens, total_fee_payment)
-    }
-
-}
+        token_index: u32,
+        admin: Address,
+        metadata_uri: String,
+    ) -> Result<(), Error> {
+        // Early return if contract is paused
+        if storage::is_paused(&env) {
+            return Err(Error::ContractPaused);
+        }
 
         // Require admin authorization
         admin.require_auth();
@@ -2157,12 +1927,6 @@ mod supply_conservation_test;
 #[cfg(test)]
 mod fuzz_create_token_simple;
 
-#[cfg(test)]
-mod differential_test;
-
-#[cfg(test)]
-mod vesting_differential_proptest;
-
 // Temporarily disabled due to compilation issues
 // #[cfg(test)]
 // mod fuzz_update_fees;
@@ -2198,15 +1962,23 @@ mod integration_test;
 
 mod gas_benchmark_comprehensive;
 
-// Temporarily disabled due to compilation issues
-// #[cfg(test)]
-// mod fuzz_string_boundaries;
-
 #[cfg(test)]
-mod stateful_model_test;
+mod timelock_test;
 
 #[cfg(test)]
 mod pagination_integration_test;
 
 #[cfg(test)]
-mod batch_token_creation_test;
+mod treasury_integration_test;
+
+#[cfg(test)]
+mod auth_fuzz_test;
+
+#[cfg(test)]
+mod metamorphic_test;
+
+#[cfg(test)]
+mod event_replay_test;
+
+#[cfg(test)]
+mod boundary_chaos_test;
