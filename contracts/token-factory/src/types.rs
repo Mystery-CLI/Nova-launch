@@ -86,6 +86,18 @@ pub struct TokenInfo {
     pub created_at: u64,
     pub is_paused: bool,
     pub clawback_enabled: bool,
+    pub freeze_enabled: bool,
+}
+
+/// Parameters for creating a new token
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TokenCreationParams {
+    pub name: String,
+    pub symbol: String,
+    pub decimals: u32,
+    pub initial_supply: i128,
+    pub metadata_uri: Option<String>,
 }
 
 /// Compact read-only snapshot of a token's current state.
@@ -231,6 +243,15 @@ pub enum DataKey {
 /// * `InvalidMaxSupply` - Max supply is less than initial supply
 /// * `WithdrawalCapExceeded` - Withdrawal would exceed daily cap
 /// * `RecipientNotAllowed` - Recipient not in allowlist
+/// * `ProposalNotFound` - Requested proposal does not exist
+/// * `VotingNotStarted` - Voting period has not begun yet
+/// * `VotingEnded` - Voting period has already ended
+/// * `AlreadyVoted` - Voter has already cast a vote on this proposal
+/// * `VotingClosed` - Voting is no longer accepting votes
+/// * `ProposalExpired` - Proposal has passed its expiration time
+/// * `ProposalNotExecutable` - Proposal cannot be executed in current state
+/// * `QuorumNotMet` - Proposal did not reach minimum quorum threshold
+/// * `AlreadyExecuted` - Proposal has already been executed
 ///
 /// # Examples
 /// ```
@@ -272,8 +293,29 @@ pub enum Error {
     StreamNotFound = 29,
     StreamCancelled = 30,
     NothingToClaim = 31,
+    InvalidTimeWindow = 32,
+    PayloadTooLarge = 33,
+    ProposalNotFound = 34,
+    VotingNotStarted = 35,
+    VotingEnded = 36,
+    AlreadyVoted = 37,
+    VotingClosed = 38,
+    ProposalExpired = 39,
+    ProposalNotExecutable = 40,
+    QuorumNotMet = 41,
+    AlreadyExecuted = 42,
     CliffNotReached = 32,
-    InvalidSchedule = 33,  // Invalid time schedule (cliff outside valid bounds)
+    InvalidSchedule = 33,
+    ProposalNotFound = 34,
+    VotingNotStarted = 35,
+    VotingEnded = 36,
+    AlreadyVoted = 37,
+    PayloadTooLarge = 38,
+    InvalidTimeWindow = 39,
+    FreezeNotEnabled = 40,
+    AddressFrozen = 41,
+    AddressNotFrozen = 42,
+    StreamPaused = 43,
 }
 
 /// Type of pending change
@@ -328,7 +370,7 @@ pub enum VoteChoice {
 /// * `votes_against` - Number of votes against
 /// * `votes_abstain` - Number of abstain votes
 #[contracttype]
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct Proposal {
     pub id: u64,
     pub proposer: Address,
