@@ -635,6 +635,10 @@ impl TokenFactory {
             }
         }
 
+        let index = storage::get_token_count(&env);
+        storage::set_token_info(&env, index, &info);
+        storage::increment_token_count(&env);
+        storage::add_stream_to_beneficiary(&env, &info.creator, index);
         // Perform all updates in batch (Phase 2 optimization)
         // Updates are combined to minimize storage access
         if let Some(fee) = base_fee {
@@ -1126,6 +1130,35 @@ impl TokenFactory {
             has_clawback:   false,
         })
     }
+
+    /// Return a paginated list of token indices where beneficiary is the creator.
+    /// cursor: starting entry index (0 for first page)
+    /// limit: max entries to return (capped at 50)
+    pub fn get_streams_by_beneficiary(
+        env: Env,
+        beneficiary: Address,
+        cursor: u32,
+        limit: u32,
+    ) -> StreamPage {
+        let limit = limit.min(50);
+        let total = storage::get_beneficiary_stream_count(&env, &beneficiary);
+
+        let mut token_indices = soroban_sdk::Vec::new(&env);
+        let mut i = cursor;
+
+        while i < total && (i - cursor) < limit {
+            if let Some(token_index) = storage::get_beneficiary_stream_entry(&env, &beneficiary, i) {
+                token_indices.push_back(token_index);
+            }
+            i += 1;
+        }
+
+        let next_cursor = if i < total { Some(i) } else { None };
+
+        StreamPage {
+            token_indices,
+            next_cursor,
+        }
     // ═══════════════════════════════════════════════════════════════════════
     // Timelock Functions
     // ═══════════════════════════════════════════════════════════════════════
