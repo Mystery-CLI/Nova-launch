@@ -1,6 +1,7 @@
 use soroban_sdk::{Address, Env, Vec};
-use crate::types::{Error, PaginatedTokens, PaginationCursor, TokenInfo};
+
 use crate::storage;
+use crate::types::{Error, PaginatedTokens};
 
 const MAX_PAGE_SIZE: u32 = 100;
 const DEFAULT_PAGE_SIZE: u32 = 20;
