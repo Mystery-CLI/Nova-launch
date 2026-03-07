@@ -141,7 +141,7 @@ pub fn batch_burn(
     info.total_burned = info.total_burned.checked_add(total_burn).ok_or(Error::ArithmeticError)?;
     info.burn_count = info.burn_count.checked_add(burns.len()).ok_or(Error::ArithmeticError)?;
     storage::set_token_info(env, token_index, &info);
-    storage::increment_burn_count(env, token_index);
+    storage::increment_burn_count(env, token_index)?;
     storage::add_total_burned(env, token_index, total_burn);
 
     emit_batch_burn_event(env, token_index, &admin, burns.len(), total_burn, new_supply);
