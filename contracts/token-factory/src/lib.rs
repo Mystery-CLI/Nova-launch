@@ -27,6 +27,9 @@ mod validation;
 #[cfg(test)]
 mod governance_property_test;
 
+#[cfg(test)]
+mod stream_claim_differential_test;
+
 // Temporarily disabled due to pre-existing compilation errors
 // #[cfg(test)]
 // mod two_step_admin_security_test;
