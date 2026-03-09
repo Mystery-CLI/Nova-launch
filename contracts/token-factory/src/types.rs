@@ -208,29 +208,6 @@ pub struct FeeUpdate {
 }
 
 /// Storage keys for contract data
-///
-/// Defines all storage locations used by the factory contract.
-/// Each variant maps to a specific piece of contract state.
-///
-/// # Variants
-/// * `Admin` - Factory administrator address
-/// * `Treasury` - Fee collection address
-/// * `BaseFee` - Base deployment fee amount
-/// * `MetadataFee` - Metadata deployment fee amount
-/// * `TokenCount` - Total number of tokens created
-/// * `Token(u32)` - Token info by index
-/// * `Balance(u32, Address)` - Token balance for holder
-/// * `BurnCount(u32)` - Number of burns for token
-/// * `TokenByAddress(Address)` - Token info lookup by address
-/// * `Paused` - Contract pause state
-/// * `TimelockConfig` - Timelock configuration
-/// * `PendingChange(u64)` - Pending change by ID
-/// * `NextChangeId` - Next available change ID
-/// * `CreatorTokens(Address)` - Vector of token indices for a creator
-/// * `CreatorTokenCount(Address)` - Number of tokens created by address
-/// * `TreasuryPolicy` - Treasury withdrawal policy
-/// * `WithdrawalPeriod` - Current withdrawal period tracking
-/// * `AllowedRecipient(Address)` - Whether address is allowed recipient
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum DataKey {
@@ -275,11 +252,6 @@ pub enum DataKey {
     CreatorVaultCount(Address),
 }
 
-/// Contract error codes
-///
-/// Every variant maps to a stable numeric code consumed by downstream clients.
-/// Vault lifecycle failures use codes 60-65 (`VaultNotFound`, `VaultLocked`,
-/// `VaultAlreadyClaimed`, `VaultCancelled`, `InvalidVaultConfig`, `NothingToClaim`).
 #[contracterror]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Error {
@@ -297,34 +269,77 @@ pub enum Error {
     InvalidBurnAmount = 12,
     BurnAmountExceedsBalance = 13,
     ContractPaused = 14,
-    InvalidTokenParams = 15,
-    BatchCreationFailed = 16,
-    StreamNotFound = 17,
-    InvalidSchedule = 18,
-    StreamCancelled = 19,
-    CliffNotReached = 20,
-    NothingToClaim = 21,
-    MissingAdmin = 22,
-    MissingTreasury = 23,
-    InvalidBaseFee = 24,
-    InvalidMetadataFee = 25,
-    InconsistentTokenCount = 26,
-    WithdrawalCapExceeded = 27,
-    RecipientNotAllowed = 28,
-    TimelockNotExpired = 29,
-    ChangeAlreadyExecuted = 30,
-    ChangeNotFound = 31,
-    MaxSupplyExceeded = 32,
-    InvalidMaxSupply = 33,
-    MintingDisabled = 34,
-    TokenPaused = 35,
-    StreamPaused = 36,
-    InvalidTimeWindow = 37,
-    PayloadTooLarge = 38,
-    ProposalNotFound = 39,
-    VotingNotStarted = 40,
-    VotingEnded = 41,
-    AlreadyVoted = 42,
+    TimelockNotExpired = 15,
+    ChangeAlreadyExecuted = 16,
+    MaxSupplyExceeded = 17,
+    InvalidMaxSupply = 18,
+    WithdrawalCapExceeded = 19,
+    RecipientNotAllowed = 20,
+    MissingAdmin = 21,
+    MissingTreasury = 22,
+    InvalidBaseFee = 23,
+    InvalidMetadataFee = 24,
+    InconsistentTokenCount = 25,
+    TokenPaused = 26,
+    StreamNotFound = 27,
+    CliffNotReached = 28,
+    StreamCancelled = 29,
+    InvalidSchedule = 30,
+    StreamPaused = 31,
+    VotingNotStarted = 32,
+    VotingEnded = 33,
+    ProposalExecuted = 34,
+    ProposalCancelled = 35,
+    InvalidVote = 36,
+    ProposalInTerminalState = 37,
+    InvalidStateTransition = 38,
+    QuorumNotMet = 39,
+    ProposalNotFound = 40,
+    ProposalNotQueued = 41,
+    InvalidProof = 42,
+    ProofRequired = 43,
+    InvalidTimeWindow = 44,
+    PayloadTooLarge = 45,
+    AlreadyVoted = 46,
+    VotingClosed = 47,
+    AddressFrozen = 48,
+    FreezeNotEnabled = 49,
+    AddressNotFrozen = 50,
+    VerificationUnavailable = 51,
+    VaultNotFound = 60,
+    VaultLocked = 61,
+    VaultAlreadyClaimed = 62,
+    VaultCancelled = 63,
+    InvalidVaultConfig = 64,
+    NothingToClaim = 65,
+}
+
+/// Governance configuration
+///
+/// Defines quorum and approval thresholds for governance operations.
+///
+/// # Fields
+/// * `quorum_percent` - Minimum participation percentage (0-100)
+/// * `approval_percent` - Minimum approval percentage (0-100)
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GovernanceConfig {
+    pub quorum_percent: u32,
+    pub approval_percent: u32,
+}
+
+/// Timelock configuration
+///
+/// Defines the delay period for sensitive operations.
+///
+/// # Fields
+/// * `delay_seconds` - Time delay in seconds before changes can be executed
+/// * `enabled` - Whether timelock is currently active
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TimelockConfig {
+    pub delay_seconds: u64,
+    pub enabled: bool,
 }
 
 /// Type of pending change
