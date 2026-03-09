@@ -1119,6 +1119,7 @@ pub fn get_governance_config(env: &Env) -> crate::types::GovernanceConfig {
         .unwrap_or(crate::types::GovernanceConfig {
             quorum_percent: 30,
             approval_percent: 51,
+            voting_period: 86400,
         })
 }
 

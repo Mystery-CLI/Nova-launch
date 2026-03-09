@@ -47,7 +47,7 @@
 ///
 /// Any schema changes require creating a new version (e.g., init_v2).
 
-use soroban_sdk::{symbol_short, Address, Env, String};
+use soroban_sdk::{symbol_short, Address, BytesN, Env, String};
 
 /// Emit initialized event (v1)
 ///
@@ -401,6 +401,56 @@ pub fn emit_governance_updated(env: &Env, quorum_percent: u32, approval_percent:
     env.events().publish(
         (symbol_short!("gov_upd"),),
         (quorum_percent, approval_percent),
+    );
+}
+
+/// Emit proposal created event
+///
+/// Emitted when a new governance proposal is created
+pub fn emit_proposal_created(
+    env: &Env,
+    proposal_id: u64,
+    proposer: &Address,
+    action_type: crate::types::ActionType,
+) {
+    env.events().publish(
+        (symbol_short!("prop_cr"), proposal_id),
+        (proposer, action_type),
+    );
+}
+
+/// Emit proposal voted event
+///
+/// Emitted when a vote is cast on a proposal
+pub fn emit_proposal_voted(
+    env: &Env,
+    proposal_id: u64,
+    voter: &Address,
+    support: crate::types::VoteChoice,
+) {
+    env.events().publish(
+        (symbol_short!("prop_vote"), proposal_id),
+        (voter, support),
+    );
+}
+
+/// Emit proposal queued event
+///
+/// Emitted when a proposal is queued for execution
+pub fn emit_proposal_queued(env: &Env, proposal_id: u64, eta: u64) {
+    env.events().publish(
+        (symbol_short!("prop_que"), proposal_id),
+        (eta,),
+    );
+}
+
+/// Emit proposal executed event
+///
+/// Emitted when a proposal is successfully executed
+pub fn emit_proposal_executed(env: &Env, proposal_id: u64) {
+    env.events().publish(
+        (symbol_short!("prop_exec"), proposal_id),
+        (),
     );
 }
 

@@ -117,6 +117,34 @@ pub struct StreamParams {
     pub cliff_time: u64,
 }
 
+/// Token creation parameters
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TokenCreationParams {
+    pub name: String,
+    pub symbol: String,
+    pub decimals: u32,
+    pub initial_supply: i128,
+    pub metadata_uri: Option<String>,
+}
+
+/// Timelock configuration
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct TimelockConfig {
+    pub delay_seconds: u64,
+    pub enabled: bool,
+}
+
+/// Governance configuration
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct GovernanceConfig {
+    pub quorum_percent: u32,
+    pub approval_percent: u32,
+    pub voting_period: u64,
+}
+
 /// Current lifecycle state for a vault allocation.
 #[contracttype]
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]

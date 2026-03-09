@@ -129,7 +129,7 @@ pub fn create_token(
     }
 
     // Get next token index
-    let token_index = storage::increment_token_count(env) - 1;
+    let token_index = storage::increment_token_count(env)? - 1;
 
     // Create token parameters
     let params = TokenCreationParams {
