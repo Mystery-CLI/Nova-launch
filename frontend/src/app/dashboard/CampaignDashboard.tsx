@@ -406,13 +406,15 @@ export default function CampaignDashboard({
   }, [onReconnectWallet, refetch]);
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 space-y-6">
+    <div className="landing-page relative min-h-screen overflow-hidden bg-background-dark p-4 text-left text-text-primary sm:p-6 lg:p-8">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-80 bg-hero-gradient opacity-60" aria-hidden="true" />
+      <div className="relative space-y-6">
       {!isWalletConnected && (
-        <Card className="shadow-sm border-amber-300">
+        <Card className="border border-primary/30 bg-background-elevated shadow-glow-red">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-amber-900">Wallet disconnected</h2>
-              <p className="text-sm text-amber-800">
+              <h2 className="text-sm font-semibold text-primary">Wallet disconnected</h2>
+              <p className="text-sm text-text-secondary">
                 Campaign actions are read-only until wallet connection is restored.
               </p>
             </div>
@@ -422,6 +424,7 @@ export default function CampaignDashboard({
               onClick={handleReconnect}
               loading={isReconnecting}
               data-testid="wallet-reconnect-button"
+              className="border-primary/40 text-text-primary hover:bg-primary/10"
             >
               Reconnect wallet
             </Button>
@@ -429,37 +432,43 @@ export default function CampaignDashboard({
         </Card>
       )}
 
-      <Card className="shadow-sm">
+      <Card className="border border-border-medium bg-background-elevated shadow-card-hover">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Campaign Dashboard</h1>
-            <p className="text-sm text-gray-600">
+            <h1 className="text-2xl font-bold text-text-primary sm:text-3xl">Campaign Dashboard</h1>
+            <p className="text-sm text-text-secondary">
               Live budget progress and audit trail across all buyback campaigns.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <span
               className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
-                isStale ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'
+                isStale ? 'bg-primary/20 text-primary' : 'bg-emerald-500/20 text-emerald-300'
               }`}
               data-testid="dashboard-stale-indicator"
             >
               {isStale ? 'Stale data' : 'Live'}
             </span>
-            <Button size="sm" variant="outline" onClick={() => void refetch(false)} loading={isFetching}>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void refetch(false)}
+              loading={isFetching}
+              className="border-primary/40 text-text-primary hover:bg-primary/10"
+            >
               Refresh
             </Button>
           </div>
         </div>
-        <div className="mt-3 text-xs text-gray-500" role="status" aria-live="polite">
+        <div className="mt-3 text-xs text-text-secondary" role="status" aria-live="polite">
           Last successful sync: {refreshLabel}
           {error ? ` • ${error}` : ''}
         </div>
       </Card>
 
       {isLoading && (
-        <Card>
-          <div className="flex items-center justify-center gap-3 py-14 text-gray-600" role="status" aria-live="polite">
+        <Card className="border border-border-medium bg-background-elevated">
+          <div className="flex items-center justify-center gap-3 py-14 text-text-secondary" role="status" aria-live="polite">
             <Spinner />
             Loading campaign metrics...
           </div>
@@ -467,7 +476,7 @@ export default function CampaignDashboard({
       )}
 
       {!isLoading && data && data.campaigns.length === 0 && (
-        <Card>
+        <Card className="border border-border-medium bg-background-elevated">
           <EmptyState title="No campaigns yet" description="Create a campaign to begin tracking budget execution." />
         </Card>
       )}
@@ -479,35 +488,35 @@ export default function CampaignDashboard({
           const executionSteps = getExecutionSteps(campaign);
 
           return (
-            <Card key={campaign.id} className="shadow-sm" title={campaign.name}>
+            <Card key={campaign.id} className="border border-border-medium bg-background-elevated shadow-card-hover" title={campaign.name}>
               <div className="space-y-6">
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <p className="text-xs uppercase tracking-wide text-gray-500">Spent</p>
-                    <p className="text-lg font-semibold text-gray-900" data-testid={`metric-spent-${campaign.id}`}>
+                  <div className="rounded-lg border border-border-medium bg-background-card p-3">
+                    <p className="text-xs uppercase tracking-wide text-text-secondary">Spent</p>
+                    <p className="text-lg font-semibold text-text-primary" data-testid={`metric-spent-${campaign.id}`}>
                       {formatNumber(campaign.metrics.spent)}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <p className="text-xs uppercase tracking-wide text-gray-500">Bought</p>
-                    <p className="text-lg font-semibold text-gray-900" data-testid={`metric-bought-${campaign.id}`}>
+                  <div className="rounded-lg border border-border-medium bg-background-card p-3">
+                    <p className="text-xs uppercase tracking-wide text-text-secondary">Bought</p>
+                    <p className="text-lg font-semibold text-text-primary" data-testid={`metric-bought-${campaign.id}`}>
                       {formatNumber(campaign.metrics.bought)}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <p className="text-xs uppercase tracking-wide text-gray-500">Burned</p>
-                    <p className="text-lg font-semibold text-gray-900" data-testid={`metric-burned-${campaign.id}`}>
+                  <div className="rounded-lg border border-border-medium bg-background-card p-3">
+                    <p className="text-xs uppercase tracking-wide text-text-secondary">Burned</p>
+                    <p className="text-lg font-semibold text-text-primary" data-testid={`metric-burned-${campaign.id}`}>
                       {formatNumber(campaign.metrics.burned)}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <p className="text-xs uppercase tracking-wide text-gray-500">Remaining Budget</p>
-                    <p className="text-lg font-semibold text-gray-900" data-testid={`metric-remaining-${campaign.id}`}>
+                  <div className="rounded-lg border border-border-medium bg-background-card p-3">
+                    <p className="text-xs uppercase tracking-wide text-text-secondary">Remaining Budget</p>
+                    <p className="text-lg font-semibold text-text-primary" data-testid={`metric-remaining-${campaign.id}`}>
                       {formatNumber(remainingBudget)}
                     </p>
                   </div>
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-                    <p className="text-xs uppercase tracking-wide text-gray-500">Status</p>
+                  <div className="rounded-lg border border-border-medium bg-background-card p-3">
+                    <p className="text-xs uppercase tracking-wide text-text-secondary">Status</p>
                     <span
                       className={`inline-flex rounded-full px-2 py-1 text-sm font-semibold capitalize ${statusColor(campaign.status)}`}
                       data-testid={`metric-status-${campaign.id}`}
@@ -519,42 +528,42 @@ export default function CampaignDashboard({
 
                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
                   <section>
-                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-600">
+                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary">
                       Lifecycle Actions
                     </h3>
                     <ul className="space-y-2">
                       {lifecycleEvents.map((event, index) => (
                         <li
                           key={event.id}
-                          className="rounded-lg border border-gray-200 bg-white p-3"
+                          className="rounded-lg border border-border-medium bg-background-card p-3"
                           data-testid={`timeline-lifecycle-${campaign.id}-${index}`}
                         >
-                          <p className="text-sm font-medium text-gray-900">{event.action}</p>
-                          <p className="text-xs text-gray-500">{event.details}</p>
-                          <p className="mt-1 text-xs text-gray-400">{formatTimestamp(event.timestamp)}</p>
+                          <p className="text-sm font-medium text-text-primary">{event.action}</p>
+                          <p className="text-xs text-text-secondary">{event.details}</p>
+                          <p className="mt-1 text-xs text-text-muted">{formatTimestamp(event.timestamp)}</p>
                         </li>
                       ))}
                     </ul>
                   </section>
 
                   <section>
-                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-600">
+                    <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-text-secondary">
                       Execution Steps
                     </h3>
                     <div className="space-y-4">
                       {executionSteps.map((stepGroup) => (
-                        <div key={`${campaign.id}-step-${stepGroup.step}`} className="rounded-lg border border-gray-200 p-3">
-                          <p className="mb-2 text-sm font-semibold text-gray-700">Step {stepGroup.step}</p>
+                        <div key={`${campaign.id}-step-${stepGroup.step}`} className="rounded-lg border border-border-medium bg-background-card p-3">
+                          <p className="mb-2 text-sm font-semibold text-text-primary">Step {stepGroup.step}</p>
                           <ul className="space-y-2">
                             {stepGroup.events.map((event, index) => (
                               <li
                                 key={event.id}
-                                className="rounded-md bg-gray-50 p-2"
+                                className="rounded-md border border-border-subtle bg-background-elevated p-2"
                                 data-testid={`timeline-step-${campaign.id}-${stepGroup.step}-${index}`}
                               >
-                                <p className="text-sm font-medium text-gray-900">{event.action}</p>
-                                <p className="text-xs text-gray-500">{event.details}</p>
-                                <p className="mt-1 text-xs text-gray-400">{formatTimestamp(event.timestamp)}</p>
+                                <p className="text-sm font-medium text-text-primary">{event.action}</p>
+                                <p className="text-xs text-text-secondary">{event.details}</p>
+                                <p className="mt-1 text-xs text-text-muted">{formatTimestamp(event.timestamp)}</p>
                               </li>
                             ))}
                           </ul>
@@ -567,6 +576,7 @@ export default function CampaignDashboard({
             </Card>
           );
         })}
+      </div>
     </div>
   );
 }
