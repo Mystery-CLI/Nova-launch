@@ -517,10 +517,27 @@ export class StellarService {
     }
   }
 
-  async getTokenMetadata(tokenAddress: string): Promise<string | null> {
+  /** Read the metadata URI stored on-chain for a token, then fetch the JSON from IPFS. */
+  async getTokenMetadata(tokenAddress: string): Promise<import('../types').TokenMetadata | null> {
     try {
-      // Placeholder: retrieve metadata from contract
-      return null;
+      const contract = new Contract(tokenAddress);
+      const dummyAccount = new Account(Keypair.random().publicKey(), '0');
+      const tx = new TransactionBuilder(dummyAccount, {
+        fee: BASE_FEE,
+        networkPassphrase: this.networkPassphrase,
+      })
+        .addOperation(contract.call('get_metadata'))
+        .setTimeout(30)
+        .build();
+
+      const sim = await this.server.simulateTransaction(tx);
+      if (!Soroban.Api.isSimulationSuccess(sim) || !sim.result) return null;
+
+      const uri: string = scValToNative(sim.result.retval);
+      if (!uri || !uri.startsWith('ipfs://')) return null;
+
+      const { IPFSService } = await import('./IPFSService');
+      return new IPFSService().getMetadata(uri);
     } catch {
       return null;
     }
