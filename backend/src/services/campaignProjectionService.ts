@@ -24,6 +24,8 @@ export interface CampaignProjection {
   currentAmount: bigint;
   executionCount: number;
   progress: number;
+  /** Latest tx hash associated with this projection (creation or most recent execution/status change) */
+  txHash: string;
   startTime: Date;
   endTime?: Date;
   metadata?: string;
@@ -200,6 +202,7 @@ export class CampaignProjectionService {
       currentAmount: campaign.currentAmount,
       executionCount: campaign.executionCount,
       progress,
+      txHash: campaign.txHash,
       startTime: campaign.startTime,
       endTime: campaign.endTime,
       metadata: campaign.metadata,

@@ -23,10 +23,11 @@ const CONTRACT_ERROR_MAP: Record<number, ContractError> = {
 };
 
 export class CampaignService {
-  private stellar: StellarService;
+  /** Exposed for testing — allows injection of a mock StellarService */
+  readonly stellar: StellarService;
 
-  constructor(network: 'testnet' | 'mainnet' = 'testnet') {
-    this.stellar = new StellarService(network);
+  constructor(network: 'testnet' | 'mainnet' = 'testnet', stellarOverride?: StellarService) {
+    this.stellar = stellarOverride ?? new StellarService(network);
   }
 
   calculateFees(): CampaignFeeBreakdown {
