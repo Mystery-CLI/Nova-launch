@@ -13,6 +13,32 @@ const NETWORK_CONFIGS = {
   },
 } as const;
 
+/**
+ * Soroban contract IDs are 56-character base32 strings starting with 'C'.
+ * Testnet contract IDs are distinct from mainnet ones — a contract deployed
+ * on testnet cannot be used on mainnet and vice versa.
+ */
+const CONTRACT_ID_REGEX = /^C[A-Z2-7]{55}$/;
+
+/**
+ * Validates a Soroban contract ID format.
+ * Throws with the variable name so misconfiguration is immediately actionable.
+ */
+export function validateContractId(id: string, variableName: string): void {
+  if (!id) {
+    throw new Error(
+      `${variableName} is empty. Set it to the deployed contract address for VITE_NETWORK="${ENV.NETWORK}".`,
+    );
+  }
+  if (!CONTRACT_ID_REGEX.test(id)) {
+    throw new Error(
+      `${variableName} is malformed: "${id}". ` +
+        `Expected a 56-character Soroban contract ID starting with "C" (e.g. CABC...XYZ). ` +
+        `Check that you copied the correct address for VITE_NETWORK="${ENV.NETWORK}".`,
+    );
+  }
+}
+
 export const STELLAR_CONFIG = {
   network: ENV.NETWORK,
   factoryContractId: ENV.FACTORY_CONTRACT_ID,

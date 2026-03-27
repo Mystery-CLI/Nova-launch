@@ -48,6 +48,12 @@ export function validateEnv(): BackendEnv {
       'Set it in your environment after deploying the contract.'
     );
   }
+  if (factoryContractId && !/^C[A-Z2-7]{55}$/.test(factoryContractId)) {
+    throw new Error(
+      `FACTORY_CONTRACT_ID is malformed: "${factoryContractId}". ` +
+      'Expected a 56-character Soroban contract ID starting with "C".'
+    );
+  }
 
   const databaseUrl = process.env.DATABASE_URL || '';
   if (!databaseUrl) {

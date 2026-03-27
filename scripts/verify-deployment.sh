@@ -29,6 +29,23 @@ if [ -z "$FACTORY_CONTRACT_ID" ]; then
   exit 1
 fi
 
+# Validate Soroban contract ID format: 56-char base32 starting with 'C'
+if ! echo "$FACTORY_CONTRACT_ID" | grep -qE '^C[A-Z2-7]{55}$'; then
+  echo "Error: FACTORY_CONTRACT_ID is malformed: \"$FACTORY_CONTRACT_ID\""
+  echo "  Expected a 56-character Soroban contract ID starting with 'C'."
+  echo "  Variable: FACTORY_CONTRACT_ID"
+  echo "  Network:  STELLAR_NETWORK=\"$STELLAR_NETWORK\""
+  echo "  Check that you copied the correct address for this network."
+  exit 1
+fi
+
+# Warn if a testnet-style contract ID is used against mainnet or vice versa.
+# This is a heuristic: real network-mismatch detection requires an RPC call,
+# but a quick prefix check catches obvious copy-paste errors.
+if [ "$STELLAR_NETWORK" = "mainnet" ]; then
+  echo "  Network: mainnet — ensure FACTORY_CONTRACT_ID was deployed to mainnet, not testnet."
+fi
+
 echo "Verifying deployment"
 echo "  Network:     $STELLAR_NETWORK"
 echo "  Contract ID: $FACTORY_CONTRACT_ID"

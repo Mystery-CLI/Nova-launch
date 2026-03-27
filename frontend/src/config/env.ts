@@ -21,12 +21,20 @@ function getEnv(): FrontendEnv {
 
   const factoryContractId = import.meta.env.VITE_FACTORY_CONTRACT_ID || '';
 
-  // In production, a missing contract ID is a hard failure.
-  if (import.meta.env.PROD && !factoryContractId) {
-    throw new Error(
-      'VITE_FACTORY_CONTRACT_ID is required in production. ' +
-      'Set it in your .env file after deploying the contract.'
-    );
+  // In production, a missing or malformed contract ID is a hard failure.
+  if (import.meta.env.PROD) {
+    if (!factoryContractId) {
+      throw new Error(
+        'VITE_FACTORY_CONTRACT_ID is empty. ' +
+        'Set it to the deployed contract address for the active network.',
+      );
+    }
+    if (!/^C[A-Z2-7]{55}$/.test(factoryContractId)) {
+      throw new Error(
+        `VITE_FACTORY_CONTRACT_ID is malformed: "${factoryContractId}". ` +
+        'Expected a 56-character Soroban contract ID starting with "C".',
+      );
+    }
   }
 
   return {
@@ -48,11 +56,11 @@ export function getBootErrors(): string[] {
 
   if (!ENV.FACTORY_CONTRACT_ID) {
     errors.push('VITE_FACTORY_CONTRACT_ID is not set — token deployment will not work.');
-  }
-
-  if (!ENV.IPFS_API_KEY || !ENV.IPFS_API_SECRET) {
-    // IPFS is optional; only warn, don't block.
-    // Not included as a hard error — metadata upload is optional.
+  } else if (!/^C[A-Z2-7]{55}$/.test(ENV.FACTORY_CONTRACT_ID)) {
+    errors.push(
+      `VITE_FACTORY_CONTRACT_ID is malformed: "${ENV.FACTORY_CONTRACT_ID}". ` +
+      'Expected a 56-character Soroban contract ID starting with "C".',
+    );
   }
 
   return errors;
