@@ -31,6 +31,7 @@
     "lighthouse": "lhci autorun"
   },
   "dependencies": {
+    "@prisma/adapter-pg": "^7.5.0",
     "@sentry/browser": "^10.40.0",
     "@stellar/freighter-api": "^6.0.1",
     "@stellar/stellar-sdk": "^13.3.0",

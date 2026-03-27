@@ -12,6 +12,8 @@ import tokenRoutes from "./routes/tokens";
 import statsRoutes from "./routes/stats";
 import governanceRoutes from "./routes/governance";
 import campaignRoutes from "./routes/campaigns";
+import streamRoutes from "./routes/streams";
+import vaultRoutes from "./routes/vaults";
 import { Database } from "./config/database";
 import { successResponse, errorResponse } from "./utils/response";
 import { requestLoggingMiddleware } from "./middleware/request-logging.middleware";
@@ -46,6 +48,8 @@ app.use("/api/tokens", limiter);
 app.use("/api/stats", limiter);
 app.use("/api/governance", limiter);
 app.use("/api/campaigns", limiter);
+app.use("/api/streams", limiter);
+app.use("/api/vaults", limiter);
 
 // Body parsing middleware
 app.use(express.json());
@@ -61,6 +65,8 @@ app.use("/api/tokens", tokenRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/governance", governanceRoutes);
 app.use("/api/campaigns", campaignRoutes);
+app.use("/api/streams", streamRoutes);
+app.use("/api/vaults", vaultRoutes);
 
 // Health check
 app.get("/health", (req, res) => {

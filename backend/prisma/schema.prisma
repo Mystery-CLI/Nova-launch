@@ -4,7 +4,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model Token {
@@ -66,7 +65,7 @@ model BuybackCampaign {
   status          CampaignStatus @default(ACTIVE)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  
+
   steps           BuybackStep[]
 
   @@index([status])
@@ -82,7 +81,7 @@ model BuybackStep {
   status          StepStatus @default(PENDING)
   executedAt      DateTime?
   txHash          String?
-  
+
   campaign        BuybackCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
 
   @@unique([campaignId, stepNumber])
@@ -128,6 +127,8 @@ model WebhookSubscription {
   createdAt   DateTime @default(now())
 
   @@index([userAddress])
+}
+
 model Stream {
   id          String   @id @default(uuid())
   streamId    Int      @unique
