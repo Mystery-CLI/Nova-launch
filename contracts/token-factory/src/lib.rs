@@ -2216,7 +2216,7 @@ mod bench_test;
 // mod pagination_integration_test;
 
 #[cfg(test)]
-// mod treasury_integration_test;
+mod treasury_integration_test;
 // #[cfg(test)]
 // mod token_pause_test;
 // #[cfg(test)]
@@ -2227,8 +2227,6 @@ mod bench_test;
 // mod gas_benchmark_comprehensive;
 // #[cfg(test)]
 // mod pagination_integration_test;
-// #[cfg(test)]
-// mod treasury_integration_test;
 // #[cfg(test)]
 // mod auth_fuzz_test;
 // #[cfg(test)]
