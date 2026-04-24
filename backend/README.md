@@ -77,6 +77,44 @@ npm test backend/src/__tests__/chaos.db-pool.test.ts
 This spec covers concurrent query saturation, client acquisition failures,
 and safe shutdown behavior for the pg pool wrapper.
 
+## Multi-Tenant Support
+
+The API supports multi-tenancy via `src/middleware/tenancy.ts`.
+
+### How it works
+
+Tenant identity is resolved on each request in this order:
+
+1. `X-Tenant-ID` request header
+2. `tenantId` / `tenant_id` claim in the Bearer JWT
+
+On success, `req.tenant` is populated with `{ id, name?, source }`.
+
+### Usage
+
+```typescript
+import { tenantMiddleware, requireTenantMatch } from "./middleware/tenancy";
+
+// Permissive — tenant optional
+app.use(tenantMiddleware());
+
+// Strict — reject requests without a tenant
+app.use(tenantMiddleware({ required: true }));
+
+// Guard a parameterised route against cross-tenant access
+app.get("/api/tenants/:tenantId/tokens", tenantMiddleware({ required: true }), requireTenantMatch, handler);
+```
+
+### Tenant ID format
+
+Alphanumeric, hyphens, and underscores; 1–64 characters (`/^[a-zA-Z0-9_-]{1,64}$/`).
+
+### Configuration
+
+| Environment variable | Default | Description |
+|---|---|---|
+| `JWT_SECRET` | `dev-secret-key` | Secret used to verify Bearer tokens |
+
 ## API Endpoints
 
 ### Governance API
