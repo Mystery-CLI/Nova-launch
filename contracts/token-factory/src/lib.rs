@@ -5,6 +5,7 @@
 #![allow(unused_must_use)]
 
 mod campaign_validation;
+mod compliance_reporting;
 mod freeze_functions;
 mod governance;
 
@@ -2121,6 +2122,52 @@ impl TokenFactory {
 
     pub fn get_vote_counts(env: Env, proposal_id: u64) -> Option<(i128, i128, i128)> {
         timelock::get_vote_counts(&env, proposal_id)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Compliance Reporting (Issue #884)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// Generate an on-chain compliance report (admin only).
+    ///
+    /// Captures an immutable snapshot of aggregate token metrics and
+    /// governance configuration for regulatory audit purposes.
+    ///
+    /// # Arguments
+    /// * `env`   – The contract environment.
+    /// * `admin` – Admin address (must authorize and match stored admin).
+    ///
+    /// # Returns
+    /// The newly created `ComplianceReport`.
+    ///
+    /// # Errors
+    /// * `Error::Unauthorized`    – Caller is not the admin.
+    /// * `Error::ArithmeticError` – Report ID counter overflowed.
+    pub fn generate_compliance_report(
+        env: Env,
+        admin: Address,
+    ) -> Result<compliance_reporting::ComplianceReport, Error> {
+        compliance_reporting::generate_report(&env, &admin)
+    }
+
+    /// Retrieve a previously generated compliance report by ID.
+    ///
+    /// # Arguments
+    /// * `env`       – The contract environment.
+    /// * `report_id` – The report identifier.
+    ///
+    /// # Returns
+    /// `Some(ComplianceReport)` if found, `None` otherwise.
+    pub fn get_compliance_report(
+        env: Env,
+        report_id: u64,
+    ) -> Option<compliance_reporting::ComplianceReport> {
+        compliance_reporting::get_report(&env, report_id)
+    }
+
+    /// Return the total number of compliance reports generated.
+    pub fn get_compliance_report_count(env: Env) -> u64 {
+        compliance_reporting::get_report_count(&env)
     }
 }
 
