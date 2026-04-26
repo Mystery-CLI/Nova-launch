@@ -1407,39 +1407,50 @@ pub fn decrement_active_campaign_count(env: &Env) -> Result<u32, Error> {
     Ok(new_count)
 }
 
-// ── Metadata versioning storage ────────────────────────────
+// ============================================================
+// Storage Functions - Vesting Schedules
+// ============================================================
 
-/// Push a new MetadataRecord for a token, incrementing its version counter.
-///
-/// Returns the new version number (1-based).
-pub fn push_metadata_history(
+/// Store a vesting schedule keyed by (token_index, schedule_id).
+pub fn set_vesting_schedule(
     env: &Env,
     token_index: u32,
-    record: &crate::types::MetadataRecord,
-) -> Result<u32, Error> {
-    // Derive next version from the token's current metadata_version
-    let token_info = get_token_info(env, token_index).ok_or(Error::TokenNotFound)?;
-    let new_version = token_info
-        .metadata_version
-        .checked_add(1)
-        .ok_or(Error::ArithmeticError)?;
-
+    schedule_id: u32,
+    schedule: &crate::types::VestingSchedule,
+) {
     env.storage()
         .persistent()
-        .set(&DataKey::MetadataHistory(token_index, new_version), record);
-
-    Ok(new_version)
+        .set(&DataKey::VestingSchedule(token_index, schedule_id), schedule);
 }
 
-/// Retrieve a specific historical MetadataRecord for a token.
-///
-/// Returns `None` if the version does not exist.
-pub fn get_metadata_history(
+/// Retrieve a vesting schedule by (token_index, schedule_id).
+/// Returns `None` if no schedule exists for that key.
+pub fn get_vesting_schedule(
     env: &Env,
     token_index: u32,
-    version: u32,
-) -> Option<crate::types::MetadataRecord> {
+    schedule_id: u32,
+) -> Option<crate::types::VestingSchedule> {
     env.storage()
         .persistent()
-        .get(&DataKey::MetadataHistory(token_index, version))
+        .get(&DataKey::VestingSchedule(token_index, schedule_id))
+}
+
+/// Return the number of vesting schedules registered for a token.
+pub fn get_vesting_schedule_count(env: &Env, token_index: u32) -> u32 {
+    env.storage()
+        .instance()
+        .get(&DataKey::VestingScheduleCount(token_index))
+        .unwrap_or(0)
+}
+
+/// Increment and persist the vesting schedule counter for a token.
+/// Returns the new count (which equals the id of the just-added schedule).
+pub fn increment_vesting_schedule_count(env: &Env, token_index: u32) -> u32 {
+    let count = get_vesting_schedule_count(env, token_index)
+        .checked_add(1)
+        .expect("vesting schedule count overflow");
+    env.storage()
+        .instance()
+        .set(&DataKey::VestingScheduleCount(token_index), &count);
+    count
 }
