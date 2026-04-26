@@ -1407,35 +1407,67 @@ pub fn decrement_active_campaign_count(env: &Env) -> Result<u32, Error> {
     Ok(new_count)
 }
 
-// ============================================================
-// Reentrancy Guard
-// ============================================================
+// ═══════════════════════════════════════════════════════════════════════
+// Staking Storage
+// ═══════════════════════════════════════════════════════════════════════
 
-/// Returns `true` if the reentrancy lock is currently held.
-pub fn is_reentrancy_locked(env: &Env) -> bool {
-    env.storage()
-        .instance()
-        .get(&DataKey::ReentrancyLock)
-        .unwrap_or(false)
+/// Get a staking pool by ID
+pub fn get_staking_pool(env: &Env, pool_id: u64) -> Option<crate::types::StakingPool> {
+    env.storage().instance().get(&DataKey::StakingPool(pool_id))
 }
 
-/// Acquire the reentrancy lock.
-///
-/// Returns `Err(Error::ReentrancyGuard)` if the lock is already held,
-/// preventing reentrant calls within the same transaction.
-pub fn acquire_reentrancy_lock(env: &Env) -> Result<(), Error> {
-    if is_reentrancy_locked(env) {
-        return Err(Error::ReentrancyGuard);
-    }
-    env.storage()
-        .instance()
-        .set(&DataKey::ReentrancyLock, &true);
-    Ok(())
+/// Save a staking pool
+pub fn set_staking_pool(env: &Env, pool_id: u64, pool: &crate::types::StakingPool) {
+    env.storage().instance().set(&DataKey::StakingPool(pool_id), pool);
 }
 
-/// Release the reentrancy lock.
-pub fn release_reentrancy_lock(env: &Env) {
+/// Get the next available staking pool ID
+pub fn get_next_staking_pool_id(env: &Env) -> u64 {
     env.storage()
         .instance()
-        .set(&DataKey::ReentrancyLock, &false);
+        .get(&DataKey::NextStakingPoolId)
+        .unwrap_or(0)
+}
+
+/// Increment and get the next staking pool ID
+pub fn increment_next_staking_pool_id(env: &Env) -> u64 {
+    let current = get_next_staking_pool_id(env);
+    let next = current + 1;
+    env.storage()
+        .instance()
+        .set(&DataKey::NextStakingPoolId, &next);
+    current
+}
+
+/// Get staking pool count
+pub fn get_staking_pool_count(env: &Env) -> u64 {
+    env.storage()
+        .instance()
+        .get(&DataKey::StakingPoolCount)
+        .unwrap_or(0)
+}
+
+/// Increment staking pool count
+pub fn increment_staking_pool_count(env: &Env) -> Result<u64, Error> {
+    let count = get_staking_pool_count(env)
+        .checked_add(1)
+        .ok_or(Error::ArithmeticError)?;
+    env.storage()
+        .instance()
+        .set(&DataKey::StakingPoolCount, &count);
+    Ok(count)
+}
+
+/// Get a user's stake in a pool
+pub fn get_user_stake(env: &Env, pool_id: u64, user: &Address) -> Option<crate::types::StakeInfo> {
+    env.storage()
+        .instance()
+        .get(&DataKey::UserStake(pool_id, user.clone()))
+}
+
+/// Save a user's stake in a pool
+pub fn set_user_stake(env: &Env, pool_id: u64, user: &Address, stake: &crate::types::StakeInfo) {
+    env.storage()
+        .instance()
+        .set(&DataKey::UserStake(pool_id, user.clone()), stake);
 }
