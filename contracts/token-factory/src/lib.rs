@@ -5,8 +5,12 @@
 #![allow(unused_must_use)]
 
 mod campaign_validation;
+mod compliance_reporting;
+mod dynamic_quorum;
 mod freeze_functions;
 mod governance;
+mod ipfs_pinning;
+mod token_recovery;
 
 mod burn;
 mod differential_engine;
@@ -2121,6 +2125,197 @@ impl TokenFactory {
 
     pub fn get_vote_counts(env: Env, proposal_id: u64) -> Option<(i128, i128, i128)> {
         timelock::get_vote_counts(&env, proposal_id)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Dynamic Governance Quorum Adjustment (Issue #882)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// Record a participation snapshot for a completed proposal period (admin only).
+    ///
+    /// Used to feed historical participation data into the dynamic quorum
+    /// adjustment algorithm.
+    ///
+    /// # Arguments
+    /// * `env`             – The contract environment.
+    /// * `admin`           – Admin address (must authorize).
+    /// * `proposal_id`     – The proposal this snapshot covers.
+    /// * `votes_cast`      – Total votes cast.
+    /// * `eligible_voters` – Total eligible voters (must be > 0).
+    ///
+    /// # Returns
+    /// The `snapshot_id` of the newly created snapshot.
+    pub fn record_governance_participation(
+        env: Env,
+        admin: Address,
+        proposal_id: u64,
+        votes_cast: u32,
+        eligible_voters: u32,
+    ) -> Result<u32, Error> {
+        dynamic_quorum::record_participation(&env, &admin, proposal_id, votes_cast, eligible_voters)
+    }
+
+    /// Compute the effective quorum for the next proposal.
+    ///
+    /// Blends the configured base quorum with recent participation history,
+    /// clamped to `[MIN_QUORUM_PERCENT (5%), MAX_QUORUM_PERCENT (80%)]`.
+    ///
+    /// Returns the base quorum (clamped) when no participation history exists.
+    pub fn get_effective_quorum(env: Env) -> u32 {
+        dynamic_quorum::compute_effective_quorum(&env)
+    }
+
+    /// Retrieve a participation snapshot by ID.
+    pub fn get_participation_snapshot(
+        env: Env,
+        snapshot_id: u32,
+    ) -> Option<dynamic_quorum::ParticipationSnapshot> {
+        dynamic_quorum::get_snapshot(&env, snapshot_id)
+    }
+
+    /// Return the total number of participation snapshots recorded.
+    pub fn get_participation_snapshot_count(env: Env) -> u32 {
+        dynamic_quorum::get_snapshot_count(&env)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Automated Compliance Reporting (Issue #883-like)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// Generate a compliance report (admin only).
+    ///
+    /// Collects on-chain metrics (token supply, burns, vaults, governance quorum)
+    /// and stores an immutable snapshot in a ring buffer.
+    ///
+    /// # Arguments
+    /// * `env`         – The contract environment.
+    /// * `admin`       – Admin address (must authorize).
+    /// * `report_type` – Classification: Full, TokenMetrics, or GovernanceMetrics.
+    ///
+    /// # Returns
+    /// The `report_id` of the newly created report.
+    pub fn generate_compliance_report(
+        env: Env,
+        admin: Address,
+        report_type: compliance_reporting::ReportType,
+    ) -> Result<u32, Error> {
+        compliance_reporting::generate_report(&env, &admin, report_type)
+    }
+
+    /// Retrieve a compliance report by ID.
+    pub fn get_compliance_report(
+        env: Env,
+        report_id: u32,
+    ) -> Option<compliance_reporting::ComplianceReport> {
+        compliance_reporting::get_report(&env, report_id)
+    }
+
+    /// Return the total number of compliance reports generated.
+    pub fn get_compliance_report_count(env: Env) -> u32 {
+        compliance_reporting::get_report_count(&env)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Token Metadata IPFS Pinning with Redundancy (Issue #883)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// Register an IPFS pin for a token's metadata CID.
+    ///
+    /// Only the token creator or factory admin may register pins.
+    ///
+    /// # Arguments
+    /// * `env`         – The contract environment.
+    /// * `caller`      – Address registering the pin (must authorize).
+    /// * `token_index` – Index of the token.
+    /// * `cid`         – IPFS CID string (max 128 chars).
+    /// * `provider`    – Pinning service identifier (max 64 chars).
+    ///
+    /// # Returns
+    /// The `pin_id` of the newly created pin record.
+    pub fn register_ipfs_pin(
+        env: Env,
+        caller: Address,
+        token_index: u32,
+        cid: String,
+        provider: String,
+    ) -> Result<u32, Error> {
+        ipfs_pinning::register_pin(&env, &caller, token_index, cid, provider)
+    }
+
+    /// Deactivate an IPFS pin record (token creator or admin only).
+    pub fn deactivate_ipfs_pin(
+        env: Env,
+        caller: Address,
+        token_index: u32,
+        pin_id: u32,
+    ) -> Result<(), Error> {
+        ipfs_pinning::deactivate_pin(&env, &caller, token_index, pin_id)
+    }
+
+    /// Get a specific IPFS pin record.
+    pub fn get_ipfs_pin(
+        env: Env,
+        token_index: u32,
+        pin_id: u32,
+    ) -> Option<ipfs_pinning::PinRecord> {
+        ipfs_pinning::get_pin(&env, token_index, pin_id)
+    }
+
+    /// Get the redundancy level (count of active pins) for a token.
+    pub fn get_ipfs_redundancy_level(env: Env, token_index: u32) -> u32 {
+        ipfs_pinning::get_redundancy_level(&env, token_index)
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // Token Recovery Mechanism for Lost Funds (Issue #881)
+    // ═══════════════════════════════════════════════════════════════════════
+
+    /// Submit a recovery request for a vault (admin only).
+    ///
+    /// Initiates the two-phase recovery process with a mandatory 48-hour
+    /// timelock before execution.
+    ///
+    /// # Arguments
+    /// * `env`       – The contract environment.
+    /// * `admin`     – Admin address (must authorize).
+    /// * `vault_id`  – ID of the vault to recover funds from.
+    /// * `recipient` – Address to receive the recovered funds.
+    ///
+    /// # Returns
+    /// The `request_id` of the newly created recovery request.
+    pub fn request_token_recovery(
+        env: Env,
+        admin: Address,
+        vault_id: u64,
+        recipient: Address,
+    ) -> Result<u32, Error> {
+        token_recovery::request_recovery(&env, &admin, vault_id, &recipient)
+    }
+
+    /// Execute a recovery request after the timelock has expired (admin only).
+    ///
+    /// # Returns
+    /// The amount of tokens recovered.
+    pub fn execute_token_recovery(env: Env, admin: Address, request_id: u32) -> Result<i128, Error> {
+        token_recovery::execute_recovery(&env, &admin, request_id)
+    }
+
+    /// Cancel a pending recovery request (admin only).
+    pub fn cancel_token_recovery(env: Env, admin: Address, request_id: u32) -> Result<(), Error> {
+        token_recovery::cancel_recovery(&env, &admin, request_id)
+    }
+
+    /// Retrieve a recovery request by ID.
+    pub fn get_recovery_request(
+        env: Env,
+        request_id: u32,
+    ) -> Option<token_recovery::RecoveryRequest> {
+        token_recovery::get_request(&env, request_id)
+    }
+
+    /// Return the number of currently pending recovery requests.
+    pub fn get_pending_recovery_count(env: Env) -> u32 {
+        token_recovery::get_pending_count(&env)
     }
 }
 
