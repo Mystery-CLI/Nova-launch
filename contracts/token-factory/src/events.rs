@@ -933,3 +933,129 @@ pub fn emit_campaign_cancelled(
         (cancelled_by, budget_remaining),
     );
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// Liquidity Mining Events (v1)
+// ═══════════════════════════════════════════════════════════════════════
+
+/// Emit mining pool created event
+///
+/// **Event Name**: lm_crt_v1
+/// Published when a new liquidity mining pool is created
+pub fn emit_mining_pool_created(
+    env: &Env,
+    pool_id: u64,
+    admin: &Address,
+    reward_token_index: u32,
+    stake_token_index: u32,
+    reward_rate: i128,
+    start_time: u64,
+    end_time: u64,
+) {
+    env.events().publish(
+        (symbol_short!("lm_crt_v1"), pool_id),
+        (
+            admin.clone(),
+            reward_token_index,
+            stake_token_index,
+            reward_rate,
+            start_time,
+            end_time,
+        ),
+    );
+}
+
+/// Emit liquidity staked event
+///
+/// **Event Name**: lm_stk_v1
+/// Published when a provider stakes tokens into a pool
+pub fn emit_liquidity_staked(
+    env: &Env,
+    pool_id: u64,
+    provider: &Address,
+    amount: i128,
+    new_total: i128,
+) {
+    env.events().publish(
+        (symbol_short!("lm_stk_v1"), pool_id),
+        (provider.clone(), amount, new_total),
+    );
+}
+
+/// Emit liquidity unstaked event
+///
+/// **Event Name**: lm_ust_v1
+/// Published when a provider unstakes tokens from a pool
+pub fn emit_liquidity_unstaked(
+    env: &Env,
+    pool_id: u64,
+    provider: &Address,
+    amount: i128,
+    remaining: i128,
+) {
+    env.events().publish(
+        (symbol_short!("lm_ust_v1"), pool_id),
+        (provider.clone(), amount, remaining),
+    );
+}
+
+/// Emit rewards claimed event
+///
+/// **Event Name**: lm_clm_v1
+/// Published when a provider claims their accumulated rewards
+pub fn emit_rewards_claimed(env: &Env, pool_id: u64, provider: &Address, amount: i128) {
+    env.events().publish(
+        (symbol_short!("lm_clm_v1"), pool_id),
+        (provider.clone(), amount),
+    );
+}
+
+/// Emit mining pool paused event
+///
+/// **Event Name**: lm_pse_v1
+/// Published when an admin pauses a mining pool
+pub fn emit_mining_pool_paused(env: &Env, pool_id: u64, admin: &Address) {
+    env.events().publish(
+        (symbol_short!("lm_pse_v1"), pool_id),
+        (admin.clone(),),
+    );
+}
+
+/// Emit mining pool resumed event
+///
+/// **Event Name**: lm_rsm_v1
+/// Published when an admin resumes a paused mining pool
+pub fn emit_mining_pool_resumed(env: &Env, pool_id: u64, admin: &Address) {
+    env.events().publish(
+        (symbol_short!("lm_rsm_v1"), pool_id),
+        (admin.clone(),),
+    );
+}
+
+/// Emit mining pool ended event
+///
+/// **Event Name**: lm_end_v1
+/// Published when an admin ends a mining pool
+pub fn emit_mining_pool_ended(env: &Env, pool_id: u64, admin: &Address) {
+    env.events().publish(
+        (symbol_short!("lm_end_v1"), pool_id),
+        (admin.clone(),),
+    );
+}
+
+/// Emit reward rate updated event
+///
+/// **Event Name**: lm_rru_v1
+/// Published when an admin updates the reward rate for a pool
+pub fn emit_reward_rate_updated(
+    env: &Env,
+    pool_id: u64,
+    admin: &Address,
+    old_rate: i128,
+    new_rate: i128,
+) {
+    env.events().publish(
+        (symbol_short!("lm_rru_v1"), pool_id),
+        (admin.clone(), old_rate, new_rate),
+    );
+}

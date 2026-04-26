@@ -197,6 +197,78 @@ pub enum CampaignStatus {
     Expired = 4,
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Liquidity Mining Types
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// Status of a liquidity mining pool
+#[contracttype]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+pub enum MiningPoolStatus {
+    /// Pool is accepting stakes and distributing rewards
+    Active = 0,
+    /// Pool is temporarily suspended; no new stakes or reward accrual
+    Paused = 1,
+    /// Pool has ended; no new stakes, but claims are still allowed
+    Ended = 2,
+}
+
+/// A liquidity mining pool that distributes reward tokens to stakers
+///
+/// Rewards are distributed proportionally based on each provider's share
+/// of the total staked amount. Uses a reward-per-token accumulator pattern
+/// for O(1) reward calculation regardless of the number of providers.
+///
+/// # Fields
+/// * `id` - Unique pool identifier
+/// * `reward_token_index` - Index of the token distributed as rewards
+/// * `stake_token_index` - Index of the token providers must stake
+/// * `reward_rate` - Reward tokens distributed per second per staked token (in stroops)
+/// * `start_time` - Unix timestamp when the pool starts
+/// * `end_time` - Unix timestamp when reward accrual stops
+/// * `total_staked` - Current total amount staked across all providers
+/// * `reward_per_token_stored` - Accumulated reward per token (scaled by REWARD_PRECISION)
+/// * `last_update_time` - Timestamp of the last reward checkpoint
+/// * `status` - Current pool lifecycle status
+/// * `created_at` - Unix timestamp when the pool was created
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct LiquidityMiningPool {
+    pub id: u64,
+    pub reward_token_index: u32,
+    pub stake_token_index: u32,
+    pub reward_rate: i128,
+    pub start_time: u64,
+    pub end_time: u64,
+    pub total_staked: i128,
+    pub reward_per_token_stored: i128,
+    pub last_update_time: u64,
+    pub status: MiningPoolStatus,
+    pub created_at: u64,
+}
+
+/// A liquidity provider's stake in a mining pool
+///
+/// Tracks the provider's staked amount and reward checkpoint data.
+/// The `reward_per_token_paid` field is the pool's `reward_per_token_stored`
+/// at the time of the last checkpoint for this provider.
+///
+/// # Fields
+/// * `provider` - Address of the liquidity provider
+/// * `pool_id` - ID of the pool this stake belongs to
+/// * `staked_amount` - Current amount staked by this provider
+/// * `reward_per_token_paid` - Pool's reward_per_token_stored at last checkpoint
+/// * `pending_rewards` - Rewards accrued but not yet claimed
+#[contracttype]
+#[derive(Clone, Debug, Eq, PartialEq)]
+pub struct ProviderStake {
+    pub provider: Address,
+    pub pool_id: u64,
+    pub staked_amount: i128,
+    pub reward_per_token_paid: i128,
+    pub pending_rewards: i128,
+}
+
 /// Individual buyback step
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -353,10 +425,10 @@ pub enum DataKey {
     CampaignByCreator(Address, u32),
     CreatorCampaignCount(Address),
     ActiveCampaigns,
-    /// Proposal execution queue entry at position `index`
-    QueueEntry(u32),
-    /// Total number of entries ever appended to the queue (monotonic counter)
-    QueueSize,
+    // Liquidity Mining
+    MiningPool(u64),
+    MiningPoolCount,
+    ProviderStake(u64, Address),
 }
 
 #[contracttype]
@@ -418,9 +490,10 @@ impl Error {
     pub const CampaignNotFound: Self = Self(51);
     pub const InvalidBudget: Self = Self(52);
     pub const InsufficientBudget: Self = Self(53);
-    /// Returned when update_metadata is called on a token whose metadata has never
-    /// been set via set_token_metadata. Callers must set metadata first.
-    pub const MetadataNotSet: Self = Self(54);
+    // Liquidity Mining errors
+    pub const PoolNotFound: Self = Self(54);
+    pub const PoolEnded: Self = Self(55);
+    pub const RewardRateZero: Self = Self(56);
 }
 
 impl From<Error> for soroban_sdk::Error {

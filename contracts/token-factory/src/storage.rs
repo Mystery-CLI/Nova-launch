@@ -1408,49 +1408,64 @@ pub fn decrement_active_campaign_count(env: &Env) -> Result<u32, Error> {
 }
 
 // ============================================================
-// Storage Functions - Vesting Schedules
+// Storage Functions - Liquidity Mining
 // ============================================================
 
-/// Store a vesting schedule keyed by (token_index, schedule_id).
-pub fn set_vesting_schedule(
-    env: &Env,
-    token_index: u32,
-    schedule_id: u32,
-    schedule: &crate::types::VestingSchedule,
-) {
+/// Get a liquidity mining pool by ID
+pub fn get_mining_pool(env: &Env, pool_id: u64) -> Option<crate::types::LiquidityMiningPool> {
     env.storage()
         .persistent()
-        .set(&DataKey::VestingSchedule(token_index, schedule_id), schedule);
+        .get(&crate::types::DataKey::MiningPool(pool_id))
 }
 
-/// Retrieve a vesting schedule by (token_index, schedule_id).
-/// Returns `None` if no schedule exists for that key.
-pub fn get_vesting_schedule(
-    env: &Env,
-    token_index: u32,
-    schedule_id: u32,
-) -> Option<crate::types::VestingSchedule> {
+/// Store a liquidity mining pool
+pub fn set_mining_pool(env: &Env, pool_id: u64, pool: &crate::types::LiquidityMiningPool) {
     env.storage()
         .persistent()
-        .get(&DataKey::VestingSchedule(token_index, schedule_id))
+        .set(&crate::types::DataKey::MiningPool(pool_id), pool);
 }
 
-/// Return the number of vesting schedules registered for a token.
-pub fn get_vesting_schedule_count(env: &Env, token_index: u32) -> u32 {
+/// Get total number of mining pools created
+pub fn get_mining_pool_count(env: &Env) -> u64 {
     env.storage()
         .instance()
-        .get(&DataKey::VestingScheduleCount(token_index))
+        .get(&crate::types::DataKey::MiningPoolCount)
         .unwrap_or(0)
 }
 
-/// Increment and persist the vesting schedule counter for a token.
-/// Returns the new count (which equals the id of the just-added schedule).
-pub fn increment_vesting_schedule_count(env: &Env, token_index: u32) -> u32 {
-    let count = get_vesting_schedule_count(env, token_index)
-        .checked_add(1)
-        .expect("vesting schedule count overflow");
+/// Increment pool count and return the new pool ID (0-indexed)
+pub fn next_mining_pool_id(env: &Env) -> Result<u64, Error> {
+    let id: u64 = env
+        .storage()
+        .instance()
+        .get(&crate::types::DataKey::MiningPoolCount)
+        .unwrap_or(0);
+    let next = id.checked_add(1).ok_or(Error::ArithmeticError)?;
     env.storage()
         .instance()
-        .set(&DataKey::VestingScheduleCount(token_index), &count);
-    count
+        .set(&crate::types::DataKey::MiningPoolCount, &next);
+    Ok(id)
+}
+
+/// Get a provider's stake record for a specific pool
+pub fn get_provider_stake(
+    env: &Env,
+    pool_id: u64,
+    provider: &Address,
+) -> Option<crate::types::ProviderStake> {
+    env.storage()
+        .persistent()
+        .get(&crate::types::DataKey::ProviderStake(pool_id, provider.clone()))
+}
+
+/// Store a provider's stake record
+pub fn set_provider_stake(
+    env: &Env,
+    pool_id: u64,
+    provider: &Address,
+    stake: &crate::types::ProviderStake,
+) {
+    env.storage()
+        .persistent()
+        .set(&crate::types::DataKey::ProviderStake(pool_id, provider.clone()), stake);
 }

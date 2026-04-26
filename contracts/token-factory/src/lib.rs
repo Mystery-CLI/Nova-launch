@@ -12,6 +12,7 @@ mod burn;
 mod differential_engine;
 mod event_versions;
 mod events;
+mod liquidity_mining;
 mod milestone_verification;
 #[cfg(all(test, feature = "legacy-tests"))]
 mod milestone_verification_test;
@@ -32,6 +33,9 @@ mod treasury;
 mod types;
 mod vesting;
 mod validation;
+
+#[cfg(test)]
+mod liquidity_mining_test;
 
 #[cfg(test)]
 mod campaign_state_test;
@@ -80,9 +84,9 @@ mod vesting_schedule_test;
 
 use soroban_sdk::{contract, contractimpl, symbol_short, Address, Bytes, BytesN, Env, String, Vec};
 use types::{
-    BuybackCampaign, CampaignStatus, ContractMetadata, Error, FactoryState, PaginationCursor,
-    StreamInfo, StreamPage, StreamParams, TokenCreationParams, TokenInfo, TokenStats, Vault,
-    VaultStatus,
+    BuybackCampaign, CampaignStatus, ContractMetadata, Error, FactoryState, LiquidityMiningPool,
+    MiningPoolStatus, PaginationCursor, ProviderStake, StreamInfo, StreamPage, StreamParams,
+    TokenCreationParams, TokenInfo, TokenStats, Vault, VaultStatus,
 };
 use crate::milestone_verification::MilestoneVerifier;
 
@@ -2628,57 +2632,133 @@ impl TokenFactory {
         timelock::get_vote_counts(&env, proposal_id)
     }
 
-    // ── Proposal Execution Queue with Priority Ordering (#864) ────────────
+    // ─────────────────────────────────────────────────────────────────────────
+    // Liquidity Mining Program
+    // ─────────────────────────────────────────────────────────────────────────
 
-    /// Add a queued proposal to the priority execution queue.
+    /// Create a new liquidity mining pool
     ///
-    /// The proposal must already be in `Queued` state (call `queue_proposal`
-    /// first).  Higher-priority proposals execute before lower-priority ones;
-    /// ties are broken by enqueue time (FIFO).
+    /// Initializes a pool that distributes `reward_token_index` tokens to
+    /// providers who stake `stake_token_index` tokens. Only the admin can
+    /// create pools.
     ///
     /// # Arguments
-    /// * `proposal_id` – id of the proposal to enqueue
-    /// * `priority`    – `Low | Normal | High | Critical`
+    /// * `admin` - Admin address (must authorize)
+    /// * `reward_token_index` - Token index for reward distribution
+    /// * `stake_token_index` - Token index that providers stake
+    /// * `reward_rate` - Rewards per second per staked token (in stroops)
+    /// * `start_time` - Unix timestamp when the pool opens
+    /// * `end_time` - Unix timestamp when reward accrual stops
     ///
     /// # Returns
-    /// The slot index assigned to this entry.
-    pub fn enqueue_proposal_with_priority(
+    /// Returns the new pool ID
+    pub fn create_mining_pool(
         env: Env,
-        proposal_id: u64,
-        priority: types::ProposalPriority,
-    ) -> Result<u32, types::Error> {
-        proposal_queue::enqueue_proposal(&env, proposal_id, priority)
+        admin: Address,
+        reward_token_index: u32,
+        stake_token_index: u32,
+        reward_rate: i128,
+        start_time: u64,
+        end_time: u64,
+    ) -> Result<u64, Error> {
+        liquidity_mining::create_mining_pool(
+            &env,
+            &admin,
+            reward_token_index,
+            stake_token_index,
+            reward_rate,
+            start_time,
+            end_time,
+        )
     }
 
-    /// Return the next highest-priority proposal ready to execute (eta ≤ now),
-    /// without removing it from the queue.
-    pub fn peek_next_proposal(env: Env) -> Option<types::QueueEntry> {
-        proposal_queue::peek_next(&env)
-    }
-
-    /// Execute the next highest-priority proposal whose timelock has expired.
+    /// Stake tokens into a liquidity mining pool to earn rewards
     ///
-    /// Dequeues the entry and delegates to `execute_proposal`.
+    /// # Arguments
+    /// * `provider` - Address staking tokens (must authorize)
+    /// * `pool_id` - ID of the pool to stake into
+    /// * `amount` - Amount of stake tokens to deposit
+    pub fn stake(env: Env, provider: Address, pool_id: u64, amount: i128) -> Result<(), Error> {
+        liquidity_mining::stake(&env, &provider, pool_id, amount)
+    }
+
+    /// Unstake tokens from a liquidity mining pool
+    ///
+    /// Pending rewards are preserved but not automatically claimed.
+    /// Call `claim_rewards` to collect them.
+    ///
+    /// # Arguments
+    /// * `provider` - Address unstaking tokens (must authorize)
+    /// * `pool_id` - ID of the pool to unstake from
+    /// * `amount` - Amount of stake tokens to withdraw
+    pub fn unstake(env: Env, provider: Address, pool_id: u64, amount: i128) -> Result<(), Error> {
+        liquidity_mining::unstake(&env, &provider, pool_id, amount)
+    }
+
+    /// Claim accumulated rewards from a liquidity mining pool
+    ///
+    /// # Arguments
+    /// * `provider` - Address claiming rewards (must authorize)
+    /// * `pool_id` - ID of the pool to claim from
     ///
     /// # Returns
-    /// The `proposal_id` that was executed.
-    pub fn execute_next_queued_proposal(env: Env) -> Result<u64, types::Error> {
-        proposal_queue::execute_next_in_queue(&env)
+    /// Returns the amount of reward tokens claimed
+    pub fn claim_rewards(env: Env, provider: Address, pool_id: u64) -> Result<i128, Error> {
+        liquidity_mining::claim_rewards(&env, &provider, pool_id)
     }
 
-    /// Return the number of live entries currently in the priority queue.
-    pub fn get_queue_length(env: Env) -> u32 {
-        proposal_queue::queue_len(&env)
+    /// Pause an active liquidity mining pool (admin only)
+    pub fn pause_mining_pool(env: Env, admin: Address, pool_id: u64) -> Result<(), Error> {
+        liquidity_mining::pause_mining_pool(&env, &admin, pool_id)
     }
 
-    /// Remove a proposal from the priority queue without executing it.
+    /// Resume a paused liquidity mining pool (admin only)
+    pub fn resume_mining_pool(env: Env, admin: Address, pool_id: u64) -> Result<(), Error> {
+        liquidity_mining::resume_mining_pool(&env, &admin, pool_id)
+    }
+
+    /// End a liquidity mining pool before its scheduled end_time (admin only)
+    pub fn end_mining_pool(env: Env, admin: Address, pool_id: u64) -> Result<(), Error> {
+        liquidity_mining::end_mining_pool(&env, &admin, pool_id)
+    }
+
+    /// Update the reward rate for an active pool (admin only)
     ///
-    /// Used when a proposal is cancelled after being enqueued.
-    pub fn remove_proposal_from_queue(
+    /// # Arguments
+    /// * `admin` - Admin address (must authorize)
+    /// * `pool_id` - ID of the pool to update
+    /// * `new_reward_rate` - New reward rate per second per staked token
+    pub fn update_reward_rate(
         env: Env,
-        proposal_id: u64,
-    ) -> Result<(), types::Error> {
-        proposal_queue::remove_from_queue(&env, proposal_id)
+        admin: Address,
+        pool_id: u64,
+        new_reward_rate: i128,
+    ) -> Result<(), Error> {
+        liquidity_mining::update_reward_rate(&env, &admin, pool_id, new_reward_rate)
+    }
+
+    /// Get a liquidity mining pool by ID
+    pub fn get_mining_pool(env: Env, pool_id: u64) -> Option<LiquidityMiningPool> {
+        liquidity_mining::get_mining_pool(&env, pool_id)
+    }
+
+    /// Get a provider's stake info for a pool
+    pub fn get_provider_stake(env: Env, pool_id: u64, provider: Address) -> Option<ProviderStake> {
+        liquidity_mining::get_provider_stake(&env, pool_id, &provider)
+    }
+
+    /// Get the current claimable rewards for a provider
+    pub fn get_claimable_rewards(
+        env: Env,
+        pool_id: u64,
+        provider: Address,
+    ) -> Result<i128, Error> {
+        liquidity_mining::get_claimable_rewards(&env, pool_id, &provider)
+    }
+
+    /// Get the total number of liquidity mining pools
+    pub fn get_mining_pool_count(env: Env) -> u64 {
+        liquidity_mining::get_mining_pool_count(&env)
     }
 }
 
