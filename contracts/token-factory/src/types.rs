@@ -279,28 +279,32 @@ pub struct FeeUpdate {
     pub metadata_fee: Option<i128>,
 }
 
-/// Token vesting schedule with cliff period support.
+/// Priority level for a queued proposal.
 ///
-/// Tracks a beneficiary's vesting grant including cliff enforcement.
-/// Vesting is linear from `start_time` to `start_time + vesting_duration`.
-/// No tokens are claimable until `start_time + cliff_duration` has elapsed.
+/// Higher numeric value = higher priority.
+/// When multiple proposals are queued, `Critical` executes before `High`,
+/// `High` before `Normal`, and `Normal` before `Low`.
+/// Ties in priority are broken by `enqueued_at` (earlier wins).
+#[contracttype]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, PartialOrd, Ord)]
+pub enum ProposalPriority {
+    Low = 0,
+    Normal = 1,
+    High = 2,
+    Critical = 3,
+}
+
+/// An entry in the proposal execution queue.
 ///
-/// # Fields
-/// * `beneficiary`       – Address that receives vested tokens
-/// * `total_amount`      – Total tokens to vest
-/// * `start_time`        – Unix timestamp when vesting begins
-/// * `cliff_duration`    – Seconds after start_time before any tokens unlock
-/// * `vesting_duration`  – Total seconds over which tokens vest linearly
-/// * `claimed_amount`    – Tokens already claimed by the beneficiary
+/// Wraps a proposal id with its assigned priority and the timestamp at which
+/// it was enqueued (used as a tiebreaker: earlier enqueue wins).
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct VestingSchedule {
-    pub beneficiary: Address,
-    pub total_amount: i128,
-    pub start_time: u64,
-    pub cliff_duration: u64,
-    pub vesting_duration: u64,
-    pub claimed_amount: i128,
+pub struct QueueEntry {
+    pub proposal_id: u64,
+    pub priority: ProposalPriority,
+    pub enqueued_at: u64,
+    pub eta: u64,
 }
 
 /// Storage keys for contract data
@@ -349,9 +353,10 @@ pub enum DataKey {
     CampaignByCreator(Address, u32),
     CreatorCampaignCount(Address),
     ActiveCampaigns,
-    /// Vesting schedule keyed by (token_index, schedule_id)
-    VestingSchedule(u32, u32),
-    VestingScheduleCount(u32),
+    /// Proposal execution queue entry at position `index`
+    QueueEntry(u32),
+    /// Total number of entries ever appended to the queue (monotonic counter)
+    QueueSize,
 }
 
 #[contracttype]
