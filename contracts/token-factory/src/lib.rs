@@ -13,6 +13,7 @@ mod freeze_functions;
 mod governance;
 mod game_history;
 mod ipfs_pinning;
+mod referral;
 
 mod batch_operations;
 mod burn;
@@ -709,7 +710,77 @@ impl TokenFactory {
     ) -> Result<u32, Error> {
         game_history::prune_history(&env, &admin, before_index)
     }
-    /// * `decimals` - Number of decimal places
+
+    // ── Referral / Affiliate System ───────────────────────────────────────
+
+    /// Register a referral relationship.
+    ///
+    /// `referee` is the new user; `referrer` is the existing user who brought
+    /// them. A referee can only register once and cannot refer themselves.
+    ///
+    /// # Errors
+    /// `InvalidParameters` – self-referral or already registered.
+    pub fn register_referral(
+        env: Env,
+        referee: Address,
+        referrer: Address,
+    ) -> Result<(), Error> {
+        referee.require_auth();
+        referral::register_referral(&env, &referee, &referrer)
+    }
+
+    /// Return the referral info for a given referee address.
+    pub fn get_referral(
+        env: Env,
+        referee: Address,
+    ) -> Option<referral::ReferralInfo> {
+        referral::get_referral(&env, &referee)
+    }
+
+    /// Return the total commission earned (but not yet paid out) by a referrer.
+    pub fn get_referral_earned(env: Env, referrer: Address) -> i128 {
+        referral::get_earned(&env, &referrer)
+    }
+
+    /// Return the current commission rate in basis points.
+    pub fn get_commission_rate(env: Env) -> u32 {
+        referral::get_commission_rate_bps(&env)
+    }
+
+    /// Update the referral commission rate (admin only).
+    ///
+    /// # Arguments
+    /// * `admin`    – Factory admin (must auth).
+    /// * `rate_bps` – New rate in basis points; max `MAX_COMMISSION_BPS` (2000).
+    ///
+    /// # Errors
+    /// `Unauthorized` – Caller is not the factory admin.
+    /// `InvalidParameters` – `rate_bps > 2000`.
+    pub fn set_commission_rate(
+        env: Env,
+        admin: Address,
+        rate_bps: u32,
+    ) -> Result<(), Error> {
+        referral::set_commission_rate_bps(&env, &admin, rate_bps)
+    }
+
+    /// Pay out accumulated commission to a referrer (admin only).
+    ///
+    /// Resets the referrer's earned balance to zero.
+    ///
+    /// # Returns
+    /// Amount paid out.
+    ///
+    /// # Errors
+    /// `Unauthorized` – Caller is not the factory admin.
+    /// `InvalidParameters` – Referrer has no earned commission.
+    pub fn payout_commission(
+        env: Env,
+        admin: Address,
+        referrer: Address,
+    ) -> Result<i128, Error> {
+        referral::payout_commission(&env, &admin, &referrer)
+    }
     /// * `initial_supply` - Initial token supply
     /// * `fee_payment` - Fee amount (must be >= base_fee)
     /// Toggle clawback capability for a token (creator only)
