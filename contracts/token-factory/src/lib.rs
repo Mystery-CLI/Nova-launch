@@ -11,6 +11,7 @@ mod campaign_validation;
 mod compliance_reporting;
 mod freeze_functions;
 mod governance;
+mod game_history;
 mod ipfs_pinning;
 
 mod batch_operations;
@@ -632,7 +633,82 @@ impl TokenFactory {
         storage::get_token_info_by_address(&env, &token_address).ok_or(Error::TokenNotFound)
     }
 
-    /// * `symbol` - Token symbol
+    // ── Game / Deployment History ─────────────────────────────────────────
+
+    /// Return the total number of deployment history records.
+    pub fn history_count(env: Env) -> u64 {
+        game_history::history_count(&env)
+    }
+
+    /// Retrieve a single deployment history record by its history index.
+    ///
+    /// Returns `None` if the index is out of range or has been pruned.
+    pub fn get_history_record(
+        env: Env,
+        history_index: u64,
+    ) -> Option<game_history::DeploymentRecord> {
+        game_history::get_history_record(&env, history_index)
+    }
+
+    /// Query deployment history for a specific creator address.
+    ///
+    /// Returns up to `limit` records (max 100) starting from `offset`.
+    ///
+    /// # Errors
+    /// `InvalidParameters` – `limit` is 0 or > 100.
+    pub fn query_by_creator(
+        env: Env,
+        creator: Address,
+        offset: u64,
+        limit: u32,
+    ) -> Result<Vec<game_history::DeploymentRecord>, Error> {
+        game_history::query_by_creator(&env, &creator, offset, limit)
+    }
+
+    /// Query deployment history within a ledger timestamp range `[from, to]`.
+    ///
+    /// Returns up to `limit` records (max 100).
+    ///
+    /// # Errors
+    /// `InvalidParameters` – `from > to`, `limit` is 0, or `limit > 100`.
+    pub fn query_by_time_range(
+        env: Env,
+        from: u64,
+        to: u64,
+        limit: u32,
+    ) -> Result<Vec<game_history::DeploymentRecord>, Error> {
+        game_history::query_by_time_range(&env, from, to, limit)
+    }
+
+    /// Replay history up to `up_to_index` and return a cumulative snapshot.
+    ///
+    /// Useful for auditing: the snapshot's `token_count` and
+    /// `cumulative_supply` should match the live factory state at that point.
+    ///
+    /// # Errors
+    /// `InvalidParameters` – `up_to_index` is beyond the current history count.
+    pub fn replay(env: Env, up_to_index: u64) -> Result<game_history::HistorySnapshot, Error> {
+        game_history::replay(&env, up_to_index)
+    }
+
+    /// Prune history records with index < `before_index` (admin only).
+    ///
+    /// Removes records from persistent storage to reclaim ledger space.
+    /// The history count is NOT decremented.
+    ///
+    /// # Returns
+    /// Number of records pruned.
+    ///
+    /// # Errors
+    /// `Unauthorized` – Caller is not the factory admin.
+    /// `InvalidParameters` – `before_index` is 0 or exceeds the history count.
+    pub fn prune_history(
+        env: Env,
+        admin: Address,
+        before_index: u64,
+    ) -> Result<u32, Error> {
+        game_history::prune_history(&env, &admin, before_index)
+    }
     /// * `decimals` - Number of decimal places
     /// * `initial_supply` - Initial token supply
     /// * `fee_payment` - Fee amount (must be >= base_fee)
