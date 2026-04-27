@@ -104,6 +104,9 @@ pub fn create_token_internal(
         params.initial_supply,
     );
 
+    // Record deployment in history log.
+    crate::game_history::record_deployment(env, token_index, &token_info);
+
     Ok(token_address)
 }
 
