@@ -124,6 +124,9 @@ mod metadata_versioning_property_test;
 #[cfg(test)]
 mod mint_concurrency_stress_test;
 
+#[cfg(test)]
+mod multisig_auth_fuzz_test;
+
 #[cfg(all(test, feature = "legacy-tests"))]
 mod burn_integration_test;
 
