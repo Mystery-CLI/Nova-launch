@@ -67,6 +67,7 @@ export class IntegrationMetrics {
   static recordIngestionLag(..._args: any[]): void {}
   static recordEventProcessed(..._args: any[]): void {}
   static recordWebhookDelivery(..._args: any[]): void {}
+  static recordWebhookDeadLetter(..._args: any[]): void {}
   static recordNotificationDelivery(..._args: any[]): void {}
 }
 

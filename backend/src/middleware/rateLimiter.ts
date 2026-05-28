@@ -223,3 +223,26 @@ export function webhookRateLimiter(
     keyPrefix: "rl:webhook",
   })(req, res, next);
 }
+
+/**
+ * Per-user rate limiter for webhook subscription mutations (create/update/delete).
+ * 10 requests per 15-minute window per authenticated user.
+ * Requires authentication and only applies to wallet-based rate limiting.
+ */
+export function webhookUserRateLimiter(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void {
+  const user = (req as any).user;
+  if (!user?.walletAddress) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+
+  createRateLimiter(getRedis(), {
+    windowMs: WINDOW_MS,
+    max: 10,
+    message: "You have exceeded the rate limit for webhook mutations. Please try again later.",
+    keyPrefix: "rl:webhook:user",
+  })(req, res, next);
+}
