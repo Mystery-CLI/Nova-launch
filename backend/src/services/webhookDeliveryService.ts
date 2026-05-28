@@ -6,6 +6,7 @@ import {
   WebhookEventData,
 } from "../types/webhook";
 import webhookService from "./webhookService";
+import webhookDeadLetterService from "./webhookDeadLetterService";
 import { IntegrationMetrics } from "../monitoring/metrics/prometheus-config";
 import { CircuitBreaker } from "../lib/circuitBreaker";
 
@@ -151,9 +152,29 @@ export class WebhookDeliveryService {
         lastError
       );
 
-      if (!success) {
+      // Route exhausted deliveries to dead-letter store
+      if (!success && attempts >= MAX_RETRIES) {
+        try {
+          const deadLetterId = await webhookDeadLetterService.storeDeadLetter(
+            subscription.id,
+            event,
+            payload,
+            statusCode,
+            lastError,
+            attempts
+          );
+          IntegrationMetrics.recordWebhookDeadLetter(event);
+          console.warn(
+            JSON.stringify({ event: 'webhook.deadletter', correlationId: cid, deadLetterId, subscriptionId: subscription.id, attempts: MAX_RETRIES, ...(txHash && { txHash }) })
+          );
+        } catch (dlError) {
+          console.error(
+            JSON.stringify({ event: 'webhook.deadletter.error', correlationId: cid, subscriptionId: subscription.id, error: dlError })
+          );
+        }
+      } else if (!success) {
         console.warn(
-          JSON.stringify({ event: 'webhook.exhausted', correlationId: cid, subscriptionId: subscription.id, attempts: MAX_RETRIES, ...(txHash && { txHash }) })
+          JSON.stringify({ event: 'webhook.failed', correlationId: cid, subscriptionId: subscription.id, attempts, ...(txHash && { txHash }) })
         );
       }
     });
