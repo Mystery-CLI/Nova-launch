@@ -8,6 +8,7 @@ import {
 import webhookService from "./webhookService";
 import webhookDeadLetterService from "./webhookDeadLetterService";
 import { IntegrationMetrics } from "../monitoring/metrics/prometheus-config";
+import { webhookDeliveryLatency } from "../lib/metrics";
 import { CircuitBreaker } from "../lib/circuitBreaker";
 
 const TIMEOUT_MS = parseInt(process.env.WEBHOOK_TIMEOUT_MS || "5000");
@@ -140,6 +141,12 @@ export class WebhookDeliveryService {
       const retries = attempts - 1;
       const outcome = success ? 'success' : (attempts >= MAX_RETRIES ? 'exhausted' : 'failed');
       IntegrationMetrics.recordWebhookDelivery(event, outcome, durationMs, retries);
+
+      // Observe end-to-end latency histogram with outcome and attempt count labels.
+      webhookDeliveryLatency.observe(
+        { outcome, attempt_count: String(attempts) },
+        durationMs / 1000
+      );
 
       // Log the delivery attempt
       await webhookService.logDelivery(

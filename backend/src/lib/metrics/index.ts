@@ -354,6 +354,24 @@ export const webhookDeliveryDuration = new Histogram({
   registers: [register],
 });
 
+/**
+ * End-to-end webhook delivery latency from event trigger to final outcome.
+ *
+ * Buckets chosen to capture fast (<500 ms) deliveries, typical retried
+ * deliveries (1–10 s with backoff), and worst-case exhausted retries (≥30 s).
+ *
+ * Labels:
+ *   outcome      – "success" | "failed" | "exhausted"
+ *   attempt_count – stringified number of attempts made (1-based)
+ */
+export const webhookDeliveryLatency = new Histogram({
+  name: "webhook_delivery_latency_seconds",
+  help: "End-to-end latency from event trigger to final delivery outcome in seconds",
+  labelNames: ["outcome", "attempt_count"],
+  buckets: [0.1, 0.25, 0.5, 1, 2.5, 5, 10, 30, 60],
+  registers: [register],
+});
+
 // ---------------------------------------------------------------------------
 // Background Job Metrics
 // ---------------------------------------------------------------------------

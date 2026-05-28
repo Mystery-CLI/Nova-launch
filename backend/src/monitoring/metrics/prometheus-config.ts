@@ -54,6 +54,7 @@ export const eventsProcessedTotal = noopMetric;
 export const webhookDeliveryTotal = noopMetric;
 export const webhookRetryTotal = noopMetric;
 export const webhookDeliveryDuration = noopMetric;
+export const webhookDeliveryLatency = noopMetric;
 export const notificationDeliveryTotal = noopMetric;
 export const jobExecutionDuration = noopMetric;
 export const jobExecutionTotal = noopMetric;
