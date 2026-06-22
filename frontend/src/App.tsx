@@ -5,6 +5,9 @@ import { Spinner, ErrorBoundary } from "./components/UI";
 import { DashboardLayout } from "./components/Layout";
 import { PerformanceDashboard } from "./components/PerformanceDashboard";
 import { PWAUpdateNotification } from "./components/PWA";
+import { IntegrationVersionBanner } from "./components/IntegrationVersionBanner";
+import type { CompatibilityInfo } from "./components/IntegrationVersionBanner";
+import { LanguageSelector } from "./components/LanguageSelector";
 
 // Lazy load pages
 const LandingPage = lazy(() => import("./pages/LandingPage"));
@@ -33,7 +36,7 @@ function normalizePath(pathname: string): string {
   return pathname || "/";
 }
 
-function App() {
+function App({ compatibilityInfo }: { compatibilityInfo?: CompatibilityInfo }) {
   const [pathname, setPathname] = useState(() =>
     normalizePath(window.location.pathname)
   );
@@ -125,11 +128,19 @@ function App() {
 
   return (
     <ErrorBoundary>
+      {compatibilityInfo && (
+        <IntegrationVersionBanner info={compatibilityInfo} />
+      )}
       <Suspense fallback={<PageLoader />}>
         <div id="main-content" tabIndex={-1}>
           {page}
         </div>
       </Suspense>
+
+      {/* Language Selector */}
+      <div className="fixed top-4 right-4 z-50">
+        <LanguageSelector variant="inline" />
+      </div>
 
       {/* PWA Update Notification */}
       <PWAUpdateNotification />
