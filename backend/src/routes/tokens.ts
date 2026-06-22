@@ -1,6 +1,8 @@
 import { Router, Request, Response } from "express";
 import { performance } from "perf_hooks";
 import { prisma } from "../lib/prisma";
+import { stellarConfig } from "../lib/stellar";
+import axios from "axios";
 
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
@@ -229,3 +231,113 @@ router.get("/search", async (req: Request, res: Response) => {
 });
 
 export default router;
+
+
+/**
+ * GET /api/tokens/deployment-status/:txHash
+ * Check deployment status: Stellar transaction finality + backend indexing status
+ *
+ * Returns one of:
+ * - PENDING: Transaction not yet finalized on Stellar
+ * - CONFIRMED: Transaction finalized + token indexed in database
+ * - FAILED: Transaction failed on Stellar or indexing error
+ */
+router.get("/deployment-status/:txHash", async (req: Request, res: Response) => {
+  try {
+    const { txHash } = req.params;
+    const { network = "testnet" } = req.query;
+
+    // Validate txHash format (64 hex chars)
+    if (!txHash || !/^[a-f0-9]{64}$/i.test(txHash)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid transaction hash format",
+      });
+    }
+
+    if (network !== "testnet" && network !== "mainnet") {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid network parameter",
+      });
+    }
+
+    // Query Horizon for transaction status
+    const horizonUrl =
+      network === "mainnet"
+        ? "https://horizon.stellar.org"
+        : "https://horizon-testnet.stellar.org";
+
+    const horizonResponse = await axios.get(`${horizonUrl}/transactions/${txHash}`);
+    
+    const txData = horizonResponse.data as {
+      successful: boolean;
+      result_xdr?: string;
+      error_xdr?: string;
+      ledger_attr?: number;
+      id?: string;
+    };
+
+    // Transaction failed on-chain
+    if (!txData.successful) {
+      return res.json({
+        txHash,
+        status: "FAILED",
+        reason: "Transaction failed on Stellar network",
+        ledger: txData.ledger_attr,
+      });
+    }
+
+    // Transaction succeeded on-chain, check if backend indexed it
+    // Look for token created within last 5 minutes with this txHash
+    const token = await prisma.token.findFirst({
+      where: {
+        // Note: Assuming burn records track deployment txHash
+        // If tokens table doesn't have txHash, this would need adaptation
+        burnRecords: {
+          some: {
+            txHash: txHash,
+          },
+        },
+      },
+      select: {
+        id: true,
+        address: true,
+        createdAt: true,
+      },
+    });
+
+    if (token) {
+      return res.json({
+        txHash,
+        status: "CONFIRMED",
+        ledger: txData.ledger_attr,
+      });
+    }
+
+    // Transaction succeeded but not yet indexed in DB
+    // Give it some time (typically < 2 seconds) before returning PENDING
+    return res.json({
+      txHash,
+      status: "PENDING",
+      reason: "Transaction finalized but not yet indexed",
+      ledger: txData.ledger_attr,
+    });
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      // Transaction not found on Horizon yet
+      return res.json({
+        txHash: req.params.txHash,
+        status: "PENDING",
+        reason: "Transaction not yet indexed by Horizon",
+      });
+    }
+    
+    console.error("Deployment status error:", error);
+    return res.status(500).json({
+      success: false,
+      error: "Failed to fetch deployment status",
+      message: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});

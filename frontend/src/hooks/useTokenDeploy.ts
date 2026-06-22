@@ -10,9 +10,7 @@ import {
 import { IPFSService, isValidIpfsUri } from '../services/IPFSService';
 import { StellarService } from '../services/stellar.service';
 import { TransactionHistoryStorage } from '../services/TransactionHistoryStorage';
-import { IPFSService } from '../services/IPFSService';
-import { StellarService } from '../services/stellar.service';
-import { TransactionHistoryStorage } from '../services/TransactionHistoryStorage';
+import { DeploymentRecoveryStorage, type DeploymentCheckpoint } from '../services/DeploymentRecoveryStorage';
 import { getDeploymentFeeBreakdown } from '../utils/feeCalculation';
 import { analytics, AnalyticsEvent } from '../services/analytics';
 import { useAnalytics } from './useAnalytics';
@@ -106,7 +104,7 @@ export function useTokenDeploy(network: 'testnet' | 'mainnet', options: UseToken
                 throw appError;
             }
 
-            setStatus('uploading');
+    setStatus('uploading');
             try {
                 metadataUri = await ipfsService.uploadMetadata(
                     params.metadata.image,
@@ -116,6 +114,22 @@ export function useTokenDeploy(network: 'testnet' | 'mainnet', options: UseToken
                 if (!isValidIpfsUri(metadataUri)) {
                     throw new Error('IPFS upload returned an invalid URI');
                 }
+                
+                // Checkpoint: IPFS upload succeeded
+                DeploymentRecoveryStorage.saveCheckpoint({
+                  step: 'ipfs_uploaded',
+                  createdAt: new Date().toISOString(),
+                  formData: {
+                    name: params.name,
+                    symbol: params.symbol,
+                    decimals: params.decimals,
+                    initialSupply: params.initialSupply,
+                    adminWallet: params.adminWallet,
+                  },
+                  ipfsCid: metadataUri.split('/').pop(), // Extract CID from ipfs://... URI
+                  network,
+                  walletAddress: params.adminWallet,
+                });
             } catch (uploadError) {
                 ErrorHandler.handle(uploadError instanceof Error ? uploadError : new Error(getErrorMessage(uploadError)), {
                     action: 'upload-metadata',
@@ -177,6 +191,16 @@ export function useTokenDeploy(network: 'testnet' | 'mainnet', options: UseToken
                 timestamp: Date.now(),
                 metadataUrl: metadataUri,
             };
+            
+            // Checkpoint: Contract call submitted (tx hash obtained)
+            const checkpoint = DeploymentRecoveryStorage.loadCheckpoint();
+            if (checkpoint) {
+              checkpoint.step = 'contract_submitted';
+              checkpoint.transactionHash = serviceResult.transactionHash;
+              checkpoint.feePaidXlm = String(feeBreakdown.totalFee);
+              DeploymentRecoveryStorage.saveCheckpoint(checkpoint);
+            }
+            
             try {
                 analytics.track(AnalyticsEvent.TOKEN_DEPLOYED, {
                     network,
@@ -192,6 +216,10 @@ export function useTokenDeploy(network: 'testnet' | 'mainnet', options: UseToken
             
             setStatus('success');
             trackTokenDeployed(params.symbol, network);
+            
+            // Clear checkpoint on final success
+            DeploymentRecoveryStorage.clearCheckpoint();
+            
             return result;
         } catch (deployError) {
             ErrorHandler.handle(deployError instanceof Error ? deployError : new Error(getErrorMessage(deployError)), {
