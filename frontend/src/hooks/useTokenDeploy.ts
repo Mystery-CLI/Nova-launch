@@ -128,7 +128,7 @@ export function useTokenDeploy(wallet: WalletState, options: UseTokenDeployOptio
                 throw appError;
             }
 
-            setStatus('uploading');
+    setStatus('uploading');
             try {
                 metadataUri = await ipfsService.uploadMetadata(
                     params.metadata.image,
@@ -200,6 +200,16 @@ export function useTokenDeploy(wallet: WalletState, options: UseTokenDeployOptio
                 timestamp: Date.now(),
                 metadataUrl: metadataUri,
             };
+            
+            // Checkpoint: Contract call submitted (tx hash obtained)
+            const checkpoint = DeploymentRecoveryStorage.loadCheckpoint();
+            if (checkpoint) {
+              checkpoint.step = 'contract_submitted';
+              checkpoint.transactionHash = serviceResult.transactionHash;
+              checkpoint.feePaidXlm = String(feeBreakdown.totalFee);
+              DeploymentRecoveryStorage.saveCheckpoint(checkpoint);
+            }
+            
             try {
                 analytics.track(AnalyticsEvent.TOKEN_DEPLOYED, {
                     network,
@@ -215,6 +225,10 @@ export function useTokenDeploy(wallet: WalletState, options: UseTokenDeployOptio
             
             setStatus('success');
             trackTokenDeployed(params.symbol, network);
+            
+            // Clear checkpoint on final success
+            DeploymentRecoveryStorage.clearCheckpoint();
+            
             return result;
         } catch (deployError) {
             ErrorHandler.handle(deployError instanceof Error ? deployError : new Error(getErrorMessage(deployError)), {

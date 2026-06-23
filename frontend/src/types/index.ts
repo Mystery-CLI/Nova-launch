@@ -96,6 +96,16 @@ export const ErrorCode = {
 
 export type ErrorCode = (typeof ErrorCode)[keyof typeof ErrorCode];
 
+// Deployment Recovery Types
+export type DeploymentStatusType = 'PENDING' | 'CONFIRMED' | 'FAILED';
+
+export interface DeploymentStatusResponse {
+  txHash: string;
+  status: DeploymentStatusType;
+  ledger?: number;
+  reason?: string; // Stellar error code/reason if failed
+}
+
 // Burn Types
 export interface BurnTokenParams {
     tokenAddress: string;
